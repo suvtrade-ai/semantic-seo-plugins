@@ -1,6 +1,6 @@
 ---
 name: image-gen
-description: Context-aware AI image generation for local business websites using the Kie API (Nano Banana / Google Gemini Imagen). Reads page content and structure, identifies every section that needs an image, generates section-appropriate images, converts to WebP, and returns ready-to-place HTML with correct alt text. Works for any page type — service pages, blog articles, about sections, process sections, fabric/material sections, etc. Use when user says "generate images", "add images to this page", "create hero image", "images for my site", "/image-gen", or when weekly-pipeline or content-brief needs images after writing a page.
+description: Context-aware AI image generation for local business websites using the Kie API (Nano Banana / Google Gemini Imagen). Reads page content and structure, identifies every section that needs an image, generates unique section-appropriate images, compresses WebP to under 100KB, and returns mobile-optimised placement HTML with correct alt text and semantic filenames. Works for any page type — service pages, blog articles, about sections, process sections, fabric/material sections, etc. Use when user says "generate images", "add images to this page", "create hero image", "images for my site", "/image-gen", or when weekly-pipeline or content-brief needs images after writing a page.
 tools:
   - Read
   - Write
@@ -9,155 +9,169 @@ tools:
 
 # Image Generation Skill — `/image-gen`
 
-Context-aware AI image generation. Reads any page (HTML, markdown, or brief), maps every section that needs an image, generates the right image for each section, converts to WebP, and returns placement-ready HTML.
-
-**This skill works for:**
-- New pages written by `/content-brief` or `/weekly-pipeline`
-- Existing HTML preview pages
-- Any future page — service, blog, about, location, landing page
-- Batch site-wide image generation at launch
+Context-aware AI image generation. Reads any page (HTML, markdown, or brief), maps every section that needs an image, generates a **unique and relevant** image for each section, compresses to under 100KB, and returns mobile-optimised placement HTML.
 
 ---
 
-## How context-aware image selection works
+## Critical rules (read before generating anything)
 
-Before generating a single image, the skill reads the page and categorises every section:
+**UNIQUE images per section.** Every section on every page gets a distinct image. Never reuse the same image across two sections or two pages. The image map (Step 1) tracks all generated filenames — if a filename already exists, invent a different angle, framing, or detail rather than reusing it.
 
-| Section type | Image style | Example |
-|---|---|---|
-| Hero / page header | Wide cinematic, establishes the service/entity | Tailor workshop exterior, suit on dress form |
-| About / story | Interior warmth, craftsmanship, human element | Workshop interior, tools, fabric detail |
-| Service section | Editorial product/process, clean and focused | Close-up of specific garment type |
-| Process / how-it-works | Hands at work, step in progress | Tailor measuring, pinning, cutting |
-| Fabric / material | Flat lay or close-up texture, studio lighting | Fabric swatches, bolt of wool |
-| Wedding / occasion | Lifestyle, aspirational, soft tones | Wedding suit on hanger, boutonniere |
-| Location / find us | Exterior architecture, tropical setting | Boutique entrance, street view |
-| Blog article hero | Editorial documentary, scene-setting | Context shot for the article topic |
-| CTA / contact | Warm, inviting, action-oriented | Workshop door, welcoming space |
-| Testimonials | Social proof context — optional | Garment detail, finished product |
+**REALISTIC photography aesthetic.** Prompts must describe real-world photography, not AI illustration. Use terms like: "DSLR editorial photography", "35mm film grain", "shallow depth of field f/1.8", "natural window light", "warm golden hour". Never use: "digital art", "illustration", "render", "3D", "artistic", "painterly", "glowing", "fantasy".
+
+**Confirm before generating.** When called after content is written, always ask: "Ready to generate [N] images for [page name]. Here's what I'll create: [list]. Shall I proceed?" Only start firing API jobs after confirmation.
+
+**WebP compression target: under 100KB per image.** Use `-quality 72` for photos (not 85). After conversion check file size and re-compress at lower quality if over 100KB.
+
+**Mobile-first HTML.** All image HTML uses `srcset`, `sizes`, and responsive CSS. No fixed pixel heights on mobile. See Step 6 for templates.
 
 ---
 
 ## Step 1 — Read and map the page
 
-Read the full page content. Extract every section with its heading and content summary.
+Read the full page. Extract every section heading and content summary.
 
 For each section, determine:
-- Does it need an image? (not all sections do — FAQ, pricing tables, CTA text usually don't)
-- What type of image is appropriate?
+- Does it need an image?
+- What type of image (see table below)?
 - What is the primary entity of this section?
+- What filename will this image get?
 
-Output a silent image map (don't show unless asked):
+Track all planned filenames in a set. If a filename was already used anywhere in this session, change the qualifier (e.g. `detail` → `closeup`, `wide` → `entrance`, `interior` → `workbench`).
+
+| Section type | Image style | Do NOT use |
+|---|---|---|
+| Hero / page header | Wide cinematic, business exterior or hero garment on form | Generic studio backdrop |
+| About / story | Workshop interior, tools, warm ambient light | Empty room, stock office |
+| Service section | The specific garment type or process for THIS service | Generic suits from another service |
+| Process / how-it-works | Hands performing the exact step described | Finished garment (save for service) |
+| Fabric / material | Flat lay of the specific fabric category mentioned | Random colourful swatches |
+| Wedding / occasion | Lifestyle — wedding suit on hanger, chapel corridor | Generic white dress |
+| Location / find us | Exterior of a boutique or mall corridor, tropical setting | Indoor only |
+| Blog article hero | Scene that directly represents the article topic | Unrelated luxury lifestyle |
+| CTA / contact | Workshop entrance, inviting doorway | Abstract or graphic |
+
+**Sections that NEVER need images (skip):**
+- Pure text FAQ
+- Pricing tables
+- Navigation / footer / breadcrumbs
+- Testimonial quote blocks (text is the content)
+- Icon-only feature grids
+
+Output the image map silently (show only on request):
 
 ```
-Section: Hero
-  → Image type: Wide cinematic hero
-  → Entity: bespoke tailoring workshop Phuket
-  → Filename: bespoke-tailoring-workshop-hero-phuket.webp
+Page: services/bespoke-suits.html
 
-Section: About / Our Story
-  → Image type: Workshop interior
-  → Entity: tailor workshop interior Bangtao
-  → Filename: tailor-workshop-interior-bangtao-phuket.webp
+Section: Hero
+  Type: Wide cinematic
+  Entity: bespoke suit on dress form, luxury tailor workshop
+  Filename: bespoke-suit-dress-form-hero-[business-slug].webp
+  Alt: Bespoke suit on dress form at [Business Name], [City]
+
+Section: Our Process
+  Type: Hands / craft action
+  Entity: tailor pinning suit jacket shoulder seam
+  Filename: tailor-pinning-suit-shoulder-seam-[business-slug].webp
+  Alt: Expert tailor pinning bespoke suit shoulder at [Business Name]
 
 Section: Fabric Selection
-  → Image type: Flat lay fabric swatches
-  → Entity: premium suit fabrics wool linen
-  → Filename: premium-suit-fabric-swatches-phuket.webp
-
-Section: Process
-  → Image type: Hands / process close-up
-  → Entity: tailor measuring fitting suit
-  → Filename: tailor-measuring-fitting-bespoke-suit.webp
+  Type: Flat lay
+  Entity: premium wool suiting fabric swatches dark tones
+  Filename: premium-wool-suiting-fabric-swatches-[business-slug].webp
+  Alt: Premium wool and linen fabric swatches for bespoke suits at [Business Name]
 ```
-
-**Sections that do NOT need images (skip):**
-- Pure text FAQ sections
-- Pricing tables
-- Navigation, footers, breadcrumbs
-- Testimonial/review quote blocks (text is the content)
-- CTA buttons (unless it's a full CTA banner with background)
 
 ---
 
 ## Step 2 — Check existing images
 
-Before generating, check `images/` directory for any existing WebP files that match a section's entity. If a suitable image already exists, reuse it rather than generating a duplicate.
+Before generating, check the `images/` directory. If a filename already exists, do not regenerate it — reuse it only if the entity and context are genuinely the same section. Otherwise, create a differentiated filename.
 
 ```bash
-ls images/*.webp 2>/dev/null || echo "No existing images"
+ls images/*.webp 2>/dev/null && echo "---existing images above---" || echo "No existing images"
+```
+
+If you find an image like `tailor-workshop-interior.webp` already used on the homepage, do NOT use it again on the About page. Instead generate `tailor-workshop-workbench-closeup.webp` or `tailor-atelier-interior-detail.webp`.
+
+---
+
+## Step 3 — Build realistic photography prompts
+
+### Rules for all prompts
+- Lead with the photography format: "DSLR editorial photography", "35mm lifestyle photography", "macro close-up photography"
+- Specify real lighting: "soft window light", "warm golden hour side lighting", "diffused overcast natural light", "warm interior tungsten light"
+- Specify depth: "shallow depth of field f/1.8", "sharp across the frame f/8"
+- End every prompt with: "No text. No watermarks. No people's faces. Photorealistic."
+- Never use words: render, illustration, 3D, digital art, artistic, stylized, glowing, fantasy, dreamlike, vibrant
+
+### Hero images (wide)
+```
+DSLR editorial photography of [specific entity — garment type on dress form / boutique exterior].
+[Warm golden side lighting / soft window light]. [Setting detail — dark mahogany shelving /
+tropical foliage visible through window]. [Mood — luxury, refined, quiet].
+Shot on 35mm, shallow depth of field. No text. No watermarks. No faces. Photorealistic.
+```
+
+### Service section images
+```
+DSLR editorial close-up photography of [exact garment or service — not "a suit" but "a navy
+herringbone two-piece suit with peak lapels"]. Soft studio window light. White or dark
+neutral background. Shallow depth of field f/2.8. Luxury fashion editorial aesthetic.
+No text. No watermarks. No faces. Photorealistic.
+```
+
+### About / interior images
+```
+DSLR interior photography of a [business type] workshop. [Warm tungsten / soft window light].
+[Specific interior elements — tailor's cutting table, fabric bolts on shelves, dress forms,
+hand tools arranged]. Quiet, refined, crafted atmosphere. 35mm, natural grain.
+No people. No text. No watermarks. Photorealistic.
+```
+
+### Process / hands images
+```
+DSLR macro close-up photography of [specific craft action — "a tailor's hands pinning the
+shoulder seam of a grey suit jacket" / "chalk-marking a suit lapel pattern on wool fabric"].
+Warm window light from the left. Shallow depth of field f/1.8, hands in focus, background blur.
+Luxury bespoke tailoring. No faces. No text. No watermarks. Photorealistic.
+```
+
+### Fabric / material flat lay
+```
+Top-down DSLR flat lay photography of [specific fabric types — "dark navy wool suiting fabric
+and ivory linen swatches"]. Dark wooden surface. Props: tailor's measuring tape, chalk, a
+few buttons. Soft diffused daylight. Sharp across the frame f/8.
+No text. No watermarks. No people. Photorealistic.
+```
+
+### Blog article hero
+```
+DSLR editorial photography of [article-specific scene — NOT generic luxury, describe what
+the article is actually about]. [Warm / natural / soft light]. [Specific location context].
+Documentary editorial style. 35mm grain. No text. No watermarks. No faces unless natural
+to the scene. Photorealistic.
+```
+
+### Location / exterior
+```
+DSLR exterior photography of a luxury tailoring boutique entrance in a tropical setting.
+[Time of day — warm golden hour / soft morning]. [Specific detail — glass door, signage,
+tropical greenery framing the entrance]. Quiet, welcoming, upscale atmosphere.
+No people. No text. No watermarks. Photorealistic.
 ```
 
 ---
 
-## Step 3 — Build section-specific prompts
+## Step 4 — Generate images (batch — all at once)
 
-Use this formula for each image type:
-
-### Hero images (wide, 1200×460–630px)
-```
-Wide editorial [photography style] of [primary entity + business type] in [location context].
-[Lighting — warm golden light / soft window light / moody ambient].
-[Setting detail — tropical workshop / dark boutique / lush greenery].
-[Aesthetic — luxury fashion, cinematic, dark moody background with warm tones].
-No people. No text. No watermarks.
-```
-
-### Service section images (square or 4:3, 800×600px)
-```
-Editorial [photography style] of [specific service entity — garment type, process step].
-[Detail focus — close-up of fabric / garment / specific element].
-[Lighting — warm natural / soft studio].
-[Aesthetic — luxury editorial, clean background or shallow DOF].
-No faces. No text.
-```
-
-### About / interior images (wide or 3:2, 1200×800px)
-```
-Interior editorial photography of a [business type] in [location].
-[Warm / ambient / natural light]. [Setting details — tables, tools, fabrics, shelving].
-[Mood — refined, crafted, welcoming, tropical luxury].
-No people. No text.
-```
-
-### Process / hands images (square or 4:3)
-```
-Close-up editorial photography of [specific craft action — measuring, pinning, cutting, hand-stitching].
-[Material detail — fabric type, tools visible].
-[Lighting — warm window light, shallow DOF].
-Luxury bespoke tailoring aesthetic. No faces. No text.
-```
-
-### Fabric / material images (wide flat lay)
-```
-Aerial editorial flat lay photography of [fabric types and colours].
-[Surface — dark wooden table / marble / craft paper].
-[Props — measuring tape, tailor's chalk, buttons].
-Soft natural light. Top-down composition. No text.
-```
-
-### Blog article hero (wide editorial)
-```
-Editorial [documentary / lifestyle / product] photography of [article primary entity].
-[Scene context matching article topic]. [Warm natural light].
-Luxury [niche] aesthetic. No text. No faces unless specified.
-```
-
-### Location / exterior images
-```
-Elegant exterior photography of a [business type] boutique in a tropical setting.
-[Time of day — warm evening / golden hour / soft morning light].
-[Architectural details — signage, entrance, greenery].
-No people. No text.
-```
-
----
-
-## Step 4 — Generate images (batch)
-
-Fire ALL image jobs simultaneously, then poll. Never generate one at a time.
+Fire ALL image jobs simultaneously. Never generate one at a time.
 
 ```python
+import json, subprocess, time, os
+
+KIE_API_KEY = "d3cc526a8f8241e1b35f7226a37ef49b"
+
 task_ids = {}
 
 for section_name, prompt, filename in image_queue:
@@ -170,198 +184,290 @@ for section_name, prompt, filename in image_queue:
         "filename": filename
     }
 
-print(f"Fired {len(task_ids)} image jobs. Waiting 30 seconds...")
+print(f"Fired {len(task_ids)} jobs simultaneously. Waiting 35 seconds...")
+time.sleep(35)
 ```
 
 ---
 
-## Step 5 — Poll and download
+## Step 5 — Poll, download, and compress
+
+Poll every 10 seconds until all jobs complete.
 
 ```python
-import time, requests
-
-time.sleep(30)
+os.makedirs("images", exist_ok=True)
 
 for section_name, meta in task_ids.items():
-    status = mcp__kie-ai-mcp-server__get_task_status(
-        api_key=KIE_API_KEY,
-        task_id=meta["task_id"]
-    )
-    state = status["api_response"]["data"]["state"]
-    
-    if state == "success":
-        result_json = json.loads(status["api_response"]["data"]["resultJson"])
-        url = result_json["resultUrls"][0]
-        
-        # Download PNG
-        subprocess.run(["curl", "-s", "-o", f"images/{meta['filename'].replace('.webp', '.png')}", url])
-        
-        # Convert to WebP
-        subprocess.run(["convert", 
-            f"images/{meta['filename'].replace('.webp', '.png')}",
-            "-quality", "85",
-            f"images/{meta['filename']}"])
-        
-        # Remove PNG
-        os.remove(f"images/{meta['filename'].replace('.webp', '.png')}")
-        
-        print(f"{section_name}: saved as images/{meta['filename']}")
-    else:
-        print(f"{section_name}: still processing ({state}) — retry in 10s")
-```
+    for attempt in range(6):
+        status = mcp__kie-ai-mcp-server__get_task_status(
+            api_key=KIE_API_KEY,
+            task_id=meta["task_id"]
+        )
+        state = status["api_response"]["data"]["state"]
 
-Poll every 10 seconds for any outstanding jobs until all are complete.
+        if state == "success":
+            result_json = json.loads(status["api_response"]["data"]["resultJson"])
+            url = result_json["resultUrls"][0]
+
+            png_path = f"images/{meta['filename'].replace('.webp', '.png')}"
+            webp_path = f"images/{meta['filename']}"
+
+            # Download
+            subprocess.run(["curl", "-s", "-o", png_path, url], check=True)
+
+            # Convert to WebP at quality 72 (targets ~60-100KB for photos)
+            subprocess.run([
+                "convert", png_path,
+                "-quality", "72",
+                "-define", "webp:method=6",
+                webp_path
+            ], check=True)
+
+            # Check file size — if over 100KB, re-compress lower
+            size_kb = os.path.getsize(webp_path) / 1024
+            if size_kb > 100:
+                subprocess.run([
+                    "convert", png_path,
+                    "-quality", "60",
+                    "-define", "webp:method=6",
+                    webp_path
+                ], check=True)
+                size_kb = os.path.getsize(webp_path) / 1024
+
+            # Clean up PNG
+            os.remove(png_path)
+
+            print(f"{section_name}: {webp_path} ({size_kb:.0f}KB)")
+            break
+
+        elif state in ("failed", "error"):
+            print(f"{section_name}: FAILED — skipping")
+            break
+        else:
+            print(f"{section_name}: still processing ({state})...")
+            time.sleep(10)
+```
 
 ---
 
-## Step 6 — Place images in sections
+## Step 6 — Place images with mobile-optimised HTML
 
-After all images are downloaded, generate placement HTML for each section.
+All images use `srcset` + `sizes` and responsive CSS. No fixed pixel heights on mobile.
 
-### HTML placement rules by section type
-
-**Hero image — full width, above fold, eager loading:**
+### Hero image (eager load, full width)
 ```html
-<div style="overflow:hidden;max-height:460px;border-bottom:1px solid var(--border);">
-  <img src="images/{filename}.webp"
-       alt="{entity-based alt text}"
-       width="1200" height="460"
-       style="width:100%;height:460px;object-fit:cover;object-position:center top;display:block;"
-       loading="eager">
+<div class="img-hero">
+  <img
+    src="images/{filename}.webp"
+    alt="{entity-based alt text}"
+    width="1200" height="500"
+    loading="eager"
+    decoding="async">
 </div>
 ```
-
-**Section image — within content section, lazy loading:**
-```html
-<figure style="margin:40px 0;border:1px solid var(--border);overflow:hidden;border-radius:4px;">
-  <img src="images/{filename}.webp"
-       alt="{entity-based alt text}"
-       width="1200" height="600"
-       style="width:100%;height:360px;object-fit:cover;display:block;"
-       loading="lazy">
-  <figcaption style="padding:12px 16px;font-size:0.78rem;color:var(--muted);background:var(--bg2);">
-    {short descriptive caption}
-  </figcaption>
-</figure>
+```css
+.img-hero {
+  width: 100%;
+  overflow: hidden;
+}
+.img-hero img {
+  width: 100%;
+  height: clamp(220px, 40vw, 500px);
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
 ```
 
-**Process / hands image — smaller, beside text or centred:**
+### Section image (lazy load, with caption)
 ```html
-<figure style="margin:32px 0;overflow:hidden;border-radius:4px;">
-  <img src="images/{filename}.webp"
-       alt="{entity-based alt text}"
-       width="800" height="500"
-       style="width:100%;max-width:640px;height:320px;object-fit:cover;display:block;"
-       loading="lazy">
+<figure class="img-section">
+  <img
+    src="images/{filename}.webp"
+    alt="{entity-based alt text}"
+    width="1200" height="600"
+    loading="lazy"
+    decoding="async">
+  <figcaption>{short descriptive caption}</figcaption>
 </figure>
 ```
-
-**About section image — full width with caption:**
-```html
-<figure style="margin:40px 0 0;border-top:1px solid var(--border);overflow:hidden;">
-  <img src="images/{filename}.webp"
-       alt="{entity-based alt text}"
-       width="1200" height="500"
-       style="width:100%;height:400px;object-fit:cover;object-position:center;display:block;"
-       loading="lazy">
-</figure>
+```css
+.img-section {
+  margin: 32px 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.img-section img {
+  width: 100%;
+  height: clamp(180px, 35vw, 420px);
+  object-fit: cover;
+  display: block;
+}
+.img-section figcaption {
+  padding: 10px 14px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  background: var(--bg2);
+}
 ```
 
-**Blog article inline image — within article body:**
+### Process / hands image (compact, beside text on desktop)
 ```html
-<figure style="margin:40px 0;border:1px solid var(--border);overflow:hidden;border-radius:4px;">
-  <img src="images/{filename}.webp"
-       alt="{entity-based alt text}"
-       width="760" height="420"
-       style="width:100%;height:300px;object-fit:cover;display:block;"
-       loading="lazy">
-  <figcaption style="padding:10px 14px;font-size:0.76rem;color:var(--muted);background:var(--bg2);">
-    {caption}
-  </figcaption>
+<figure class="img-process">
+  <img
+    src="images/{filename}.webp"
+    alt="{entity-based alt text}"
+    width="800" height="500"
+    loading="lazy"
+    decoding="async">
 </figure>
+```
+```css
+.img-process {
+  margin: 24px 0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.img-process img {
+  width: 100%;
+  max-width: 640px;
+  height: clamp(160px, 30vw, 360px);
+  object-fit: cover;
+  display: block;
+}
+```
+
+### Mobile-first global rule (include in every page's `<style>`)
+```css
+img {
+  max-width: 100%;
+  height: auto;
+}
+@media (max-width: 640px) {
+  .img-hero img   { height: clamp(180px, 56vw, 280px); }
+  .img-section img { height: clamp(160px, 50vw, 240px); }
+  .img-process img { height: clamp(140px, 44vw, 200px); }
+}
 ```
 
 ---
 
 ## Step 7 — Alt text formula
 
-Every image must have entity-based alt text:
+Every image must have entity-specific alt text. Never generic.
 
 ```
-{Primary entity} {action or context} at {business name}, {location detail}
+Format: {Primary entity + detail} at {Business Name}, {Location}
 
-Examples:
-"Bespoke suit on dress form at The Outfit Custom Tailor workshop, Bangtao Beach Phuket"
-"Expert tailor hands measuring suit jacket at The Outfit, Choeng Thale Phuket"
-"Premium wool and linen fabric swatches for bespoke tailoring at The Outfit, Phuket"
-"Tailoring workshop interior at The Outfit Custom Tailor, Bangtao Beach Phuket"
-"Wedding suit on hanger at The Outfit bespoke tailor, Phuket Thailand"
+Good:
+"Bespoke navy suit on tailor's dress form at The Outfit Custom Tailor, Platinum Fashion Mall Bangkok"
+"Expert tailor pinning shoulder seam of grey suit jacket at The Outfit, Bangkok"
+"Premium Italian wool and linen fabric swatches for bespoke suits at The Outfit Custom Tailor"
+"Tailor's cutting table and dress forms inside The Outfit workshop, Bangkok Thailand"
+"Flat lay of navy herringbone suiting wool on dark wood surface, The Outfit Bangkok"
+
+Bad (never use):
+"image of suit"
+"photo of tailor"
+"fabric swatches"
+"hero image"
 ```
-
-Never use generic alt text like "image of suit" or "photo".
 
 ---
 
 ## Step 8 — Semantic filename convention
 
 ```
-{entity}-{qualifier}-{location}-{context}.webp
+{entity}-{specific-qualifier}-{context}.webp
 
-Max 60 characters. Lowercase. Hyphens only. No underscores.
+Rules:
+- Max 60 characters
+- Lowercase, hyphens only, no underscores
+- Must be unique across the entire site — no two pages share a filename
+- Include a business slug or page slug as the last segment when needed for uniqueness
 
 Examples:
-bespoke-suit-dress-form-phuket-tailor.webp
-tailor-workshop-interior-bangtao-phuket.webp
-premium-suit-fabric-swatches-phuket.webp
-tailor-measuring-fitting-bespoke-suit.webp
-wedding-suit-hanger-tropical-boutique-phuket.webp
-garment-alteration-hands-phuket-tailor.webp
-tailoring-atelier-wide-shot-phuket.webp
+bespoke-suit-dress-form-hero-theoutfit.webp      ← hero, this business
+tailor-pinning-shoulder-seam-bespoke.webp         ← process, specific action
+navy-herringbone-wool-fabric-flatlay.webp         ← fabric, specific type
+tailor-workshop-cutting-table-interior.webp       ← interior, specific element
+wedding-suit-hanger-tropical-corridor.webp        ← occasion, specific scene
+bespoke-trousers-break-detail-closeup.webp        ← service, specific garment detail
+boutique-entrance-golden-hour-bangkok.webp        ← exterior, specific time
+blog-suit-care-folding-travel-method.webp         ← blog, topic-specific
+```
+
+If a filename would duplicate one already in `images/`, append `-[page-slug]` or change the qualifier.
+
+---
+
+## Confirm before generating (mandatory step)
+
+When called after content is written, always show this confirmation before firing any API calls:
+
+```
+Ready to generate [N] images for: [page name]
+
+  1. Hero — bespoke-suit-dress-form-hero-theoutfit.webp
+     "DSLR editorial of bespoke suit on dress form, warm golden light..."
+
+  2. Process section — tailor-pinning-shoulder-seam-bespoke.webp
+     "DSLR macro of tailor's hands pinning shoulder seam..."
+
+  3. Fabric section — navy-herringbone-wool-fabric-flatlay.webp
+     "Top-down flat lay of navy herringbone wool, dark wood surface..."
+
+Estimated time: ~35 seconds. Target size: under 100KB each.
+
+Generate? (yes / skip / adjust)
+```
+
+Only proceed after confirmation.
+
+---
+
+## Output summary
+
+After all images are placed, report:
+
+```
+Images generated for: [page name]
+
+Hero:
+  bespoke-suit-dress-form-hero-theoutfit.webp — 68KB — placed after <header>
+
+Process section:
+  tailor-pinning-shoulder-seam-bespoke.webp — 54KB — placed before process steps
+
+Fabric section:
+  navy-herringbone-wool-fabric-flatlay.webp — 81KB — placed before fabric grid
+
+Total: 3 images, 203KB combined
+All images: mobile-optimised with clamp() heights, lazy loading, entity alt text
 ```
 
 ---
 
 ## Integration with content-brief and weekly-pipeline
 
-When `/content-brief` finishes a page brief, or `/weekly-pipeline` finishes an article:
+When `/content-brief` finishes a page or `/weekly-pipeline` finishes an article:
 
 1. Extract all section headings from the written content
-2. Map each section to an image type (see table at top)
-3. Ask: "Should I generate images for this page? I'll create [X] images — one for the hero, one for [section], one for [section]."
-4. If yes, run Steps 1–7 for that page automatically
-5. Return all images with placement HTML inserted into the correct positions in the content
+2. Map each section to an image type (see table in Step 1)
+3. Show the confirmation list (see "Confirm before generating" above)
+4. After approval, batch-fire all jobs (Step 4)
+5. Download, compress to <100KB (Step 5)
+6. Insert mobile-optimised HTML at the correct position in the page (Step 6)
+7. Report the summary
 
-**The image-gen skill is always offered after content is written — not just for the hero but for every section that would benefit from an image.**
-
----
-
-## Output summary format
-
-After all images are placed, report:
-
-```
-Images generated and placed for: [page name]
-
-Hero:
-  → images/bespoke-tailoring-workshop-hero-phuket.webp (87KB) — placed after <header>
-
-About section:
-  → images/tailor-workshop-interior-bangtao-phuket.webp (112KB) — placed in .about-section
-
-Process section:
-  → images/tailor-measuring-fitting-bespoke-suit.webp (64KB) — placed before process steps
-
-Fabric section:
-  → images/premium-suit-fabric-swatches-phuket.webp (143KB) — placed before fabric grid
-
-Total: 4 images, 406KB combined
-```
+**Always offer image generation after content is written — not just a hero, but every content section that would benefit from a visual.**
 
 ---
 
-## WordPress integration (Novamira MCP)
+## WordPress upload (Novamira MCP)
 
-After generating and converting, upload each WebP to the WordPress media library:
+After generating and compressing:
 
 ```
 mcp__novamira__mcp-adapter-execute-ability(
@@ -374,4 +480,4 @@ mcp__novamira__mcp-adapter-execute-ability(
 )
 ```
 
-Then use the returned media URL when inserting into WordPress page content.
+Use the returned media URL when inserting into WordPress page content.
