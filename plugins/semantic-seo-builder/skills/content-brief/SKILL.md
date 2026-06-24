@@ -194,7 +194,7 @@ Target: AI Citation Readiness score > 70. Articles below 60 need rewriting befor
 /image-gen [article file]
 ```
 
-Our Kie API image generation skill reads the article's section structure and generates section-appropriate images: hero, service illustration, process diagram, fabric/material detail. Converts to WebP at 85% quality.
+Our Kie API image generation skill reads the article's section structure and generates section-appropriate images: hero, service illustration, process diagram, fabric/material detail. Converts to WebP at 72% quality (target under 100KB per image).
 
 **Do NOT use `blog-image` or `seo-image-gen`** — we have the Kie API image-gen skill which is configured for this pipeline.
 

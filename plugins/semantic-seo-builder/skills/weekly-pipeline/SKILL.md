@@ -96,7 +96,7 @@ After writing the article, if the user has provided a Kie API key, generate a he
    - Location: business location from `01-foundation.md`
 3. The image-gen skill will:
    - Generate via Kie Nano Banana API
-   - Convert to WebP at quality 85
+   - Convert to WebP at quality 72 (target under 100KB)
    - Save as `images/{article-slug}-hero.webp`
    - Return an `<img>` tag with SEO alt text
 4. Provide the `<img>` tag alongside the article content for the user to insert as the featured image in WordPress.
@@ -162,7 +162,17 @@ Tell the user: "Post this to your Google Business Profile: Google Business → P
 Append to `weekly-log.md`:
 
 ```
-## Week of [current
+## Week of [YYYY-MM-DD]
+
+- Article: [title]
+- URL slug: /[slug]/
+- Word count: [N]
+- Images: [N] generated — [list filenames]
+- GBP post: [published / pending]
+- Indexing: [submitted / manual]
+- AI Citation score: [N]/100
+- Drift check: [pass / issues found]
+```
 
 ---
 
