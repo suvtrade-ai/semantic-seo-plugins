@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: Full end-to-end Semantic SEO pipeline for local business websites following Koray Tuğberk Gübür's framework. Runs 5 research phases then site launch — Foundation & Strategy → Semantic Research → Topical Authority → Content System → Technical & Local SEO → Site Launch (hosting, WordPress, GBP, GA4, GSC). Use when the user says "workflow", "/workflow", "build my SEO site", "start the framework", "run the pipeline", "semantic SEO pipeline", "start from scratch", "full Koray framework", or "build a local business site with Semantic SEO".
+description: Full end-to-end Semantic SEO pipeline for local business websites following Koray Tuğberk Gübür's framework. 7 phases: Foundation → Semantic Research → Topical Authority → Content System → Technical & Local SEO → Static HTML Pages (responsive, mobile, images) → Site Launch (hosting, WordPress, GBP, GA4, GSC). Use when the user says "workflow", "/workflow", "build my SEO site", "start the framework", "run the pipeline", "semantic SEO pipeline", "start from scratch", "full Koray framework", or "build a local business site with Semantic SEO".
 tools:
   - Read
   - Write
@@ -10,7 +10,7 @@ tools:
 
 # Semantic SEO Builder — /workflow
 
-This is the master pipeline skill. It guides the user through 5 research/strategy phases followed by site launch. The research phases must complete first — they produce the blueprint. Only after Phase 5 is the blueprint used to build and launch the actual site.
+This is the master pipeline skill. It guides the user through 7 phases: 5 research phases that produce the blueprint, then Phase 6 which builds static HTML preview pages from that blueprint (with images), then Phase 7 which launches the live site on WordPress.
 
 ## How to run the pipeline
 
@@ -116,11 +116,11 @@ The file must contain:
 - GBP alignment checklist (GBP description entities must match homepage and service page entities)
 - Technical implementation checklist (WordPress-specific: theme, plugins, permalink structure, page speed)
 
-Tell the user: "Phase 5 complete — technical & local SEO plan saved."
+Tell the user: "Phase 5 complete — technical & local SEO plan saved. Moving to Phase 6."
 
 ---
 
-### Phase 6 — Site Launch
+### Phase 6 — Static HTML Pages
 
 **Only reached after all 5 research phases are complete.**
 
@@ -128,33 +128,37 @@ Summarize what was produced:
 
 ```
 Blueprint complete:
-  01-foundation.md      — market segments, ICP profiles, search intent map
+  01-foundation.md        — market segments, ICP profiles, search intent map
   02-semantic-research.md — entity matrices, attribute research
-  03-topical-map.md     — hub-and-spoke architecture, content hierarchy
-  04-content-system.md  — content inventory, semantic briefs, internal link map
-  05-technical-local.md — site architecture, schema plan, GBP alignment
+  03-topical-map.md       — hub-and-spoke architecture, content hierarchy
+  04-content-system.md    — content inventory, semantic briefs, internal link map
+  05-technical-local.md   — site architecture, schema plan, GBP alignment
 ```
 
-Tell the user: "Research phases complete. Now launching the actual site using this blueprint."
+Tell the user: "Blueprint complete. Building static HTML preview pages now."
 
-**Automatically trigger `/one-time-setup`** — do not wait for the user to ask. Say: "Starting Phase 6 — Site Launch..." and proceed through the one-time-setup skill. It reads `05-technical-local.md` and `04-content-system.md` to pre-fill business-specific details into every checklist item.
+**Automatically trigger `/html-pages`** — do not wait for the user to ask. Say: "Starting Phase 6 — HTML Page Builder..." and run the html-pages skill. It reads all 5 phase documents and builds every page in the content inventory as responsive, mobile-optimised HTML with images.
 
-Phase 6 covers:
-- Hostinger account + domain registration
-- WordPress installation and core settings
-- Theme (GeneratePress) + essential plugins
-- Rank Math SEO configuration
-- Google Business Profile creation and full optimization
-- GA4 + Google Search Console connection
-- Launch indexing — sitemap submission + P1 page indexing requests
+Phase 6 produces:
+- `preview/index.html` — Homepage with full sections and hero image
+- `preview/services/[slug].html` — One file per pillar service with service-specific images
+- `preview/about.html` — About / story page with workshop images
+- `preview/contact.html` — Contact page with click-to-call and Google Maps embed
+- `preview/blog/index.html` — Blog listing page
+- `preview/css/style.css` — Shared responsive stylesheet
+- `preview/js/main.js` — Hamburger nav toggle
+- `preview/images/` — All WebP images, each under 100KB
 
-After one-time-setup completes, ask: "Do you want me to write the content for your P1 service pages now? I can write the full page copy for each pillar page using the semantic briefs from Phase 4."
+Every page is mobile-optimised: hamburger nav, clamp() typography, responsive grids, click-to-call phone numbers, no fixed heights.
 
-## Rules
+Tell the user: "Phase 6 complete — all pages built with images. Moving to Phase 7."
 
-- Never skip a phase. Each phase output feeds into the next.
-- Always produce the deliverable file before moving to the next phase. Do not announce completion without the file existing.
-- Write all files in clean markdown with clear headers.
-- Base all research on the actual business niche provided — do not use generic placeholders.
-- When performing entity or topic research, use WebSearch to validate against real SERPs.
-- Attribute research must look at what real top-ranking pages in the niche actually cover — not generic SEO theory.
+---
+
+### Phase 7 — Site Launch
+
+**Only reached after Phase 6 HTML pages are complete.**
+
+Tell the user: "HTML pages are ready. Now setting up the live site."
+
+**Automatically trigger `/one-time-setup`** — do not wait for the user to ask. Say: "Starting Phase 7 — Site Launch..." and proceed through the one-time-setu
