@@ -1,0 +1,20 @@
+{
+  "name": "semantic-seo-builder",
+  "version": "0.8.0",
+  "description": "Koray Semantic SEO pipeline for local businesses. 5-phase: Foundation (customer voice, persona, competitor baseline), Semantic Research (entities, SERP clustering), Topical Map (hub-and-spoke + intent validation), Content (brief\u2192write\u2192factcheck\u2192schema\u2192GEO\u2192images), Technical & Local SEO. Track 2: weekly pipeline + monthly audit. Integrates claude-seo and claude-blog.",
+  "author": {
+    "name": "Mohan"
+  },
+  "agents": "./agents",
+  "keywords": [
+    "seo",
+    "semantic-seo",
+    "local-seo",
+    "topical-authority",
+    "wordpress",
+    "hostinger",
+    "gsc",
+    "gbp",
+    "zernio"
+  ]
+}
