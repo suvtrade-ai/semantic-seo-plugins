@@ -294,6 +294,22 @@ if (toggle && menu) {
 
 ## Step 4 — Page templates
 
+### Page build loop — order for EVERY page
+
+Build each page in this exact order. Do not skip any step:
+
+```
+For each page in the manifest:
+  1. Write full HTML body content (sections, nav, footer)
+  2. Generate schema JSON-LD for this page type → inject into <head>
+  3. Run mobile checklist — fix any failures before continuing
+  4. Confirm image list with user → generate images via Kie API → insert into HTML
+  5. Save file to preview/
+  6. Move to next page
+```
+
+Schema is always Step 2 — generated immediately after the HTML body is written, before images. Every page gets JSON-LD in `<head>` before the file is saved. Never save a page without its schema.
+
 ### HTML document shell (every page)
 ```html
 <!DOCTYPE html>
@@ -306,9 +322,12 @@ if (toggle && menu) {
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="/css/style.css">
+
+  <!-- SCHEMA — generated per page type, see Step 4a below -->
   <script type="application/ld+json">
-  [schema JSON-LD — type from 05-technical-local.md]
+  { ... }
   </script>
+
   <style>
     /* page-specific overrides only */
   </style>
@@ -324,207 +343,219 @@ if (toggle && menu) {
 </html>
 ```
 
-### Homepage sections (in order)
-1. Hero — headline (H1 with primary keyword), subheadline, two CTAs (primary + secondary), hero image
-2. Services overview — H2, 3–4 service cards with icon/image, link to service page
-3. Why us / differentiators — H2, 3 columns of key strengths from Phase 1 ICP research
-4. Process — H2, numbered steps, hands/process image
-5. Fabric / materials (if relevant) — H2, flat lay image, brief copy
-6. Testimonials — H2, 2–3 quote cards (pull from foundation research or write realistic placeholders)
-7. Location / find us — H2, address, click-to-call button, Google Maps embed
-8. Blog preview — H2, latest 2–3 articles as cards (link to blog/)
-9. Final CTA banner — strong action headline, single button
-
-### Service page sections
-1. Hero — H1 with service keyword, image of the specific garment/service
-2. What we offer — H2, detailed description using entities from semantic research
-3. Our process for this service — H2, step-by-step
-4. Fabric/material options (if relevant) — H2, flat lay image
-5. Pricing guidance (optional) — H2, "starting from" ranges or "custom quote"
-6. Related services — H2, 2–3 cards linking to sibling service pages
-7. FAQ for this service — H2, 4–6 Q&A using PAA questions from topical map
-8. CTA — "Book a fitting" button, phone number
-
-### About page sections
-1. Hero — H1, interior workshop image
-2. Our story — H2, founder narrative (draw from foundation brand voice)
-3. Craft & expertise — H2, skills, years of experience, specialisms
-4. Workshop / atelier — H2, interior image, location description
-5. Values — H2, 3 core values
-6. CTA — "Meet us" or "Book an appointment"
-
-### Contact page sections
-1. Header — H1, brief welcoming line
-2. Contact details — phone (click-to-call `<a href="tel:...">`), email, address, hours
-3. Google Maps embed — responsive iframe
-4. Contact form — name, email, phone, message, service dropdown, submit
-5. Directions — brief landmark text from address in 05-technical-local.md
-
-### Blog index sections
-1. Header — H1 "[Niche] Blog — Tips, Guides & Inspiration"
-2. Featured article — latest article, large card with image
-3. Article grid — remaining articles in 2–3 column responsive grid
-4. Categories sidebar (on desktop) — service-aligned categories
-
 ---
 
-## Step 5 — Image generation per page
+## Step 4a — Schema JSON-LD per page (runs immediately after body is written)
 
-After writing each page, immediately call `/image-gen` for that page. Do not batch all pages then image all at once — do it page by page.
+Read `05-technical-local.md` for the schema type assigned to each page. Generate the full JSON-LD and insert it into `<head>` before saving. Use real business data — no placeholders in the final output.
 
-For each page:
-1. Identify all sections that need an image (Step 1 of image-gen skill)
-2. Show the confirmation list: "Ready to generate [N] images for [page]. Proceed?"
-3. After approval, fire all image jobs for that page simultaneously
-4. Download, compress to <100KB, insert into page HTML
-5. Move to the next page
-
-Images must be unique per section and per page. Track all generated filenames in a running list for the entire session. No filename may be reused.
-
----
-
-## Step 6 — Mobile optimisation checklist
-
-Before saving each page file, verify:
-
-```
-Mobile checks:
-[ ] Viewport meta tag present: <meta name="viewport" content="width=device-width, initial-scale=1.0">
-[ ] No horizontal scroll — no element wider than 100vw
-[ ] Touch targets minimum 44x44px (buttons, nav links)
-[ ] Font sizes use clamp() — never fixed px below 14px
-[ ] Images use clamp() heights — no fixed pixel height on mobile
-[ ] Hero image height: clamp(200px, 50vw, 500px) on mobile
-[ ] Nav collapses to hamburger below 720px
-[ ] Grid columns collapse to 1 column below 640px
-[ ] Click-to-call on all phone numbers: <a href="tel:[phone]">
-[ ] Google Maps embed has max-width: 100%; height: 300px on mobile
-[ ] Form inputs: font-size 16px minimum (prevents iOS zoom on focus)
-[ ] CTA buttons: min-width: 100% on mobile
-[ ] Footer grid collapses to 1 column below 640px
-```
-
----
-
-## Step 7 — Schema markup per page
-
-Pull schema types from `05-technical-local.md`. Every page gets JSON-LD in `<head>`.
-
-### Homepage — LocalBusiness
+### Homepage — LocalBusiness (or most specific subtype)
 ```json
 {
   "@context": "https://schema.org",
-  "@type": "[BusinessType from 05-technical-local.md]",
+  "@type": "[BusinessType from 05-technical-local.md — e.g. ClothingStore, LocalBusiness]",
   "name": "[Business Name]",
-  "description": "[Primary service description]",
+  "description": "[Primary service — 1 sentence, entity-rich]",
   "url": "https://[domain]/",
   "telephone": "[phone]",
+  "email": "[email if available]",
   "address": {
     "@type": "PostalAddress",
-    "streetAddress": "[street]",
+    "streetAddress": "[street address]",
     "addressLocality": "[city]",
-    "addressCountry": "[country code]"
+    "addressRegion": "[state/province if applicable]",
+    "postalCode": "[postcode]",
+    "addressCountry": "[2-letter country code]"
   },
-  "floorLevel": "[floor — e.g. 2nd Floor]",
-  "openingHoursSpecification": [...],
-  "image": "images/[hero-image].webp",
-  "priceRange": "$$"
+  "floorLevel": "[floor — e.g. 2nd Floor, only if business is in multi-story building]",
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": "[lat from 05-technical-local.md if available]",
+    "longitude": "[lng from 05-technical-local.md if available]"
+  },
+  "openingHoursSpecification": [
+    {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+      "opens": "10:00",
+      "closes": "20:00"
+    }
+  ],
+  "image": "images/[hero-image-filename].webp",
+  "priceRange": "$$",
+  "currenciesAccepted": "[currency — e.g. THB, USD, GBP]",
+  "paymentAccepted": "Cash, Credit Card",
+  "hasMap": "https://maps.google.com/?q=[encoded address]",
+  "sameAs": [
+    "https://www.facebook.com/[handle]",
+    "https://www.instagram.com/[handle]"
+  ]
 }
 ```
 
-Note: `floorLevel` sits outside `address`, directly on the LocalBusiness object.
+**Rule:** `floorLevel` sits directly on the LocalBusiness object — never inside `address`. Only include it if the business is in a multi-story building (from Phase 1 intake).
 
-### Service pages — Service schema
+### Service pages — Service + LocalBusiness provider
 ```json
 {
   "@context": "https://schema.org",
   "@type": "Service",
-  "name": "[Service Name]",
+  "name": "[Service Name — e.g. Bespoke Suit Tailoring]",
+  "description": "[Service description — entity-rich, 1-2 sentences]",
   "provider": {
     "@type": "[BusinessType]",
     "name": "[Business Name]",
-    "url": "https://[domain]/"
+    "url": "https://[domain]/",
+    "telephone": "[phone]",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "[street]",
+      "addressLocality": "[city]",
+      "addressCountry": "[country code]"
+    }
   },
-  "areaServed": "[City]",
-  "description": "[Service description]"
+  "areaServed": {
+    "@type": "City",
+    "name": "[City]"
+  },
+  "serviceType": "[service category — e.g. Bespoke Tailoring]",
+  "url": "https://[domain]/services/[slug]/"
 }
 ```
 
-### Blog articles — BlogPosting + FAQPage
-Pull from `blog-schema` output if available. Otherwise generate inline.
-
----
-
-## Step 8 — Internal linking
-
-Every page must link to at least 3 other pages using anchor text drawn from the internal link map in `04-content-system.md`.
-
-- Service pages link to each other ("See also: [related service]")
-- Homepage links to all P1 service pages
-- Blog articles link to the relevant service page
-- All pages link to contact.html in the nav and in at least one in-body CTA
-
----
-
-## Step 9 — Save files
-
-```
-preview/
-  index.html
-  about.html
-  contact.html
-  css/
-    style.css
-  js/
-    main.js
-  images/
-    [all webp files]
-  services/
-    [service-slug].html
-    (one file per pillar service)
-  blog/
-    index.html
-    [article-slug].html
+**Also add FAQPage schema on service pages** (from the FAQ section at the bottom of the page):
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "[Q1 from FAQ section]",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "[A1 — full answer text]"
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "[Q2]",
+      "acceptedAnswer": { "@type": "Answer", "text": "[A2]" }
+    }
+  ]
+}
 ```
 
-Name each HTML file using the URL slug from `05-technical-local.md`.
+Include both schemas in `<head>` as two separate `<script type="application/ld+json">` blocks.
 
----
-
-## Step 10 — Completion report
-
-After all pages are built:
-
-```
-Phase 6 complete — Static HTML pages built
-
-Pages created:
-  preview/index.html                     — Homepage
-  preview/services/bespoke-suits.html    — Bespoke Suits
-  preview/services/shirt-tailoring.html  — Shirt Tailoring
-  preview/about.html                     — About
-  preview/contact.html                   — Contact
-  preview/blog/index.html                — Blog Index
-
-Images:
-  [N] images generated, all under 100KB
-  Total image payload: [X]KB
-
-Mobile: all pages pass mobile checklist
-Schema: LocalBusiness on homepage, Service on service pages, FAQPage on service pages
-
-Next: Phase 7 — Site Launch (/one-time-setup)
+### About page — AboutPage + LocalBusiness
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "AboutPage",
+  "name": "About [Business Name]",
+  "url": "https://[domain]/about.html",
+  "description": "[About page summary]",
+  "publisher": {
+    "@type": "[BusinessType]",
+    "name": "[Business Name]",
+    "url": "https://[domain]/"
+  }
+}
 ```
 
----
+### Contact page — ContactPage + LocalBusiness
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "ContactPage",
+  "name": "Contact [Business Name]",
+  "url": "https://[domain]/contact.html",
+  "description": "Contact [Business Name] for appointments, fittings, and enquiries.",
+  "publisher": {
+    "@type": "[BusinessType]",
+    "name": "[Business Name]",
+    "telephone": "[phone]",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "[street]",
+      "addressLocality": "[city]",
+      "addressCountry": "[country code]"
+    }
+  }
+}
+```
 
-## Rules
+### Blog index — CollectionPage
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "[Business Name] Blog",
+  "url": "https://[domain]/blog/",
+  "description": "[Niche] tips, guides, and advice from [Business Name] in [City].",
+  "publisher": {
+    "@type": "[BusinessType]",
+    "name": "[Business Name]",
+    "url": "https://[domain]/"
+  }
+}
+```
 
-- No emojis anywhere in HTML output — not in headings, buttons, copy, or comments
-- No inline styles except where CSS variables are used in a `style` attribute
-- All phone numbers must be click-to-call: `<a href="tel:[phone]">`
-- All images must have descriptive, entity-based alt text (never empty, never "image")
-- All external links (Google Maps embed, fonts) use `rel="noopener"` where applicable
-- Copy must use real business entities from the phase documents — no generic placeholders like "Company Name" left in the final HTML
-- Never use `!important` in CSS
-- Grid layouts must collapse gracefully at 640px and 380px breakpoints
+### Blog article — BlogPosting + FAQPage + BreadcrumbList
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "[Article H1]",
+  "description": "[Meta description]",
+  "url": "https://[domain]/blog/[slug].html",
+  "datePublished": "[YYYY-MM-DD]",
+  "dateModified": "[YYYY-MM-DD]",
+  "author": {
+    "@type": "Organization",
+    "name": "[Business Name]",
+    "url": "https://[domain]/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "[Business Name]",
+    "url": "https://[domain]/"
+  },
+  "image": "images/[article-hero].webp",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://[domain]/blog/[slug].html"
+  }
+}
+```
+
+Add BreadcrumbList on every page:
+```json
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://[domain]/" },
+    { "@type": "ListItem", "position": 2, "name": "[Page Name]", "item": "https://[domain]/[slug]" }
+  ]
+}
+```
+
+### Schema validation checklist (after generating each page's schema)
+```
+[ ] All @type values match what's in 05-technical-local.md
+[ ] floorLevel present on LocalBusiness if multi-story building (from Phase 1 intake)
+[ ] floorLevel NOT inside address block
+[ ] No placeholder text remaining — all fields filled with real business data
+[ ] FAQPage included on all service pages (from FAQ section)
+[ ] BreadcrumbList included on every page
+[ ] Two separate <script> blocks on service pages (Service + FAQPage)
+[ ] telephone matches NAP in footer exactly
+[ ] address matches NAP in footer exactly
+```
+
+### Homepage sections (in order)
+1. Hero — headline (H1 with primary keyword), subheadline, two CTAs (primary + secondary), hero image
+2. Services overview — H2, 3–4 service cards with icon/image, link to service page
+3. Why us / differentiators — H2, 3 columns of key strengths from Phase 1 ICP research
