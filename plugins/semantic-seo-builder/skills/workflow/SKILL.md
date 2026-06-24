@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: Full end-to-end Semantic SEO pipeline for local business websites following Koray Tuğberk Gübür's framework. Runs all 5 phases sequentially — Foundation & Strategy → Semantic Research → Topical Authority → Content System → Technical & Local SEO — producing a deliverable file at the end of each phase. Use when the user says "workflow", "/workflow", "build my SEO site", "start the framework", "run the pipeline", "semantic SEO pipeline", "start from scratch", "full Koray framework", or "build a local business site with Semantic SEO".
+description: Full end-to-end Semantic SEO pipeline for local business websites following Koray Tuğberk Gübür's framework. Runs 5 research phases then site launch — Foundation & Strategy → Semantic Research → Topical Authority → Content System → Technical & Local SEO → Site Launch (hosting, WordPress, GBP, GA4, GSC). Use when the user says "workflow", "/workflow", "build my SEO site", "start the framework", "run the pipeline", "semantic SEO pipeline", "start from scratch", "full Koray framework", or "build a local business site with Semantic SEO".
 tools:
   - Read
   - Write
@@ -10,7 +10,7 @@ tools:
 
 # Semantic SEO Builder — /workflow
 
-This is the master pipeline skill. It guides the user through all 5 phases of the Semantic SEO framework for local businesses, producing a structured deliverable file at the end of each phase. All 5 phases must complete before the site can be built.
+This is the master pipeline skill. It guides the user through 5 research/strategy phases followed by site launch. The research phases must complete first — they produce the blueprint. Only after Phase 5 is the blueprint used to build and launch the actual site.
 
 ## How to run the pipeline
 
@@ -120,14 +120,35 @@ Tell the user: "Phase 5 complete — technical & local SEO plan saved."
 
 ---
 
-### Pipeline complete
+### Phase 6 — Site Launch
 
-After all 5 phases:
+**Only reached after all 5 research phases are complete.**
 
-1. Summarize what was produced (list all 5 files with one-line description each)
-2. Tell the user: "Your Semantic SEO site blueprint is complete — all 5 phase documents are ready. The next step is building the actual site."
-3. **Automatically trigger `/one-time-setup`** — do not wait for the user to ask. Say: "Starting the site build checklist now..." and proceed through the one-time-setup skill. This covers Hostinger, WordPress, Rank Math, GBP, GA4, GSC, and the launch indexing submission.
-4. After one-time-setup completes, ask: "Do you want me to write the content for your P1 service pages now? I can write the full page copy for each pillar page using the semantic briefs from Phase 4."
+Summarize what was produced:
+
+```
+Blueprint complete:
+  01-foundation.md      — market segments, ICP profiles, search intent map
+  02-semantic-research.md — entity matrices, attribute research
+  03-topical-map.md     — hub-and-spoke architecture, content hierarchy
+  04-content-system.md  — content inventory, semantic briefs, internal link map
+  05-technical-local.md — site architecture, schema plan, GBP alignment
+```
+
+Tell the user: "Research phases complete. Now launching the actual site using this blueprint."
+
+**Automatically trigger `/one-time-setup`** — do not wait for the user to ask. Say: "Starting Phase 6 — Site Launch..." and proceed through the one-time-setup skill. It reads `05-technical-local.md` and `04-content-system.md` to pre-fill business-specific details into every checklist item.
+
+Phase 6 covers:
+- Hostinger account + domain registration
+- WordPress installation and core settings
+- Theme (GeneratePress) + essential plugins
+- Rank Math SEO configuration
+- Google Business Profile creation and full optimization
+- GA4 + Google Search Console connection
+- Launch indexing — sitemap submission + P1 page indexing requests
+
+After one-time-setup completes, ask: "Do you want me to write the content for your P1 service pages now? I can write the full page copy for each pillar page using the semantic briefs from Phase 4."
 
 ## Rules
 
