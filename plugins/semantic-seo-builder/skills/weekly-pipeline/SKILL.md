@@ -39,7 +39,10 @@ Before writing, build a brief (silent — don't show the user unless they ask):
 
 - Primary entity: [entity]
 - Supporting entities: [list from entity map]
-- Attributes to cover: popular + prominent + relevant
+- Attributes to cover: pull from the attribute matrix in `02-semantic-research.md`
+  - **Popular attributes** (present on 8+ of top 20 pages) → must be covered or the article looks incomplete
+  - **Prominent attributes** (in H1/first 200 words of 3+ of top 5 pages) → include in H1 or opening paragraph
+  - **Relevant attributes** (PAA questions but <4/20 pages) → include at least one — this is what differentiates the article from generic competitor content
 - Target intent: Informational (supporting content is always informational)
 - Query path: [what query brings users here] → [what they search next] → [how this article bridges that]
 - Word count: 800–1,500 words (supporting articles)
@@ -123,8 +126,6 @@ If no service account is configured, tell the user:
 "To submit this page to Google automatically, run `/indexing` and follow the 5-minute service account setup. Until then, you can manually request indexing in GSC → URL Inspection → Request Indexing."
 
 ---
-
-
 
 ## Step 5 — Write and publish the GBP post
 
@@ -252,15 +253,66 @@ After publishing, run a quick drift check to confirm the new article didn't acci
 
 ---
 
+### Step W5b — Algorithmic Authorship pass (CoR writing quality gate)
+
+After `/blog write` produces the article draft and **before** factcheck, run the Algorithmic Authorship pass. Reference `cor/frameworks/algorithmic-authorship.md`.
+
+This is a self-review step — read the draft and fix violations before factcheck runs:
+
+**Sentence structure violations to fix:**
+```
+[ ] Any sentence > 30 words → break into two
+[ ] Any ambiguous pronoun (it, they, this, he, she) where entity isn't 100% clear → replace with entity name
+[ ] Any sentence not in S-P-O order → rewrite: [Entity] [verb] [value/target]
+[ ] Any sentence with > 1 fact → split into separate sentences
+```
+
+**Filler words to delete (find and remove every instance):**
+```
+actually, basically, really, very, quite, rather, somewhat, overall,
+in conclusion, as stated before, it goes without saying, needless to say,
+at the end of the day, in my opinion, I had the pleasure of,
+it is important to note that, in today's world
+```
+
+**Modality corrections:**
+```
+[ ] Established facts use "is/are" — not "can be" or "might be"
+[ ] Variable outcomes use "can/may" — not definitive "is"
+[ ] Recommendations use "should" — not "must" (unless legally required)
+[ ] Uncertain claims use "might/could" with a truth range: "typically X–Y days"
+```
+
+**Featured Snippet check:**
+```
+[ ] H1 answered in first paragraph in < 40 words
+[ ] First sentence after EVERY H2/H3 directly answers the heading
+[ ] At least one < 40-word definition block per pillar topic
+```
+
+**AI phrase check — remove these exact patterns:**
+```
+[ ] "In today's world" → replace with specific year or context
+[ ] "It is important to note" → state the fact directly
+[ ] "Overall" at section ends → replace with specific conclusion + data
+[ ] "Firstly / Secondly / Finally" → use numbered lists or direct statements
+[ ] "I had the pleasure of" → state the experience directly
+```
+
+Only proceed to Step W6 (`/blog factcheck`) once the article passes this checklist.
+
+---
+
 ### Complete weekly sequence summary:
 
 1. `/blog write [topic]`
-2. `/blog factcheck [file]`
-3. `/blog seo-check [file]`
-4. `/blog schema [file]`
-5. `/blog geo [file]`
-6. `/image-gen [file]`
-7. Publish to WordPress
-8. GBP post linking to article
-9. `/seo drift [domain] --check`
-10. Update `weekly-log.md`
+2. Algorithmic Authorship pass (W5b)
+3. `/blog factcheck [file]`
+4. `/blog seo-check [file]`
+5. `/blog schema [file]`
+6. `/blog geo [file]`
+7. `/image-gen [file]`
+8. Publish to WordPress
+9. GBP post linking to article
+10. `/seo drift [domain] --check`
+11. Update `weekly-log.md`

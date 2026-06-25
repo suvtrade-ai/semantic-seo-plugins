@@ -245,13 +245,6 @@ After publishing all P1 pages, validate that schema is rendering correctly.
 2. Confirm the correct schema type is detected (LocalBusiness, Service, FAQPage)
 3. Check for errors — missing `name`, `address`, `telephone`, or `url` fields break eligibility
 
-**Via URL Inspection API (if GSC service account configured):**
-```python
-result = inspect_url(url, site_property)
-schema_data = result["inspectionResult"].get("richResultsResult", {})
-print(schema_data)
-```
-
 **Common errors to fix in Rank Math:**
 - `telephone` missing → add under Schema → LocalBusiness → telephone
 - `address` incomplete → PostalCode and AddressCountry required
@@ -263,8 +256,6 @@ print(schema_data)
 - [ ] Each P1 service page has Service schema with no errors
 - [ ] FAQPage schema validated on pages with FAQ sections
 
-
-
 ## Schema — floorLevel Check
 
 If the business is inside a multi-story building, verify the homepage LocalBusiness JSON-LD includes:
@@ -272,3 +263,89 @@ If the business is inside a multi-story building, verify the homepage LocalBusin
 - Value from `01-foundation.md` Phase 1 intake
 
 Missing `floorLevel` on a mall/tower business = critical schema gap. Add via Rank Math → Custom Schema before launch.
+
+---
+
+## Step 11 — Technical SEO baseline (run after all P1 pages are live)
+
+Run these four checks in sequence after all P1 pages are published and before calling the launch done. Issues found here are easier to fix before Google indexes the site.
+
+### 11a — Technical SEO audit with seo-technical
+
+```
+/seo technical [domain]
+```
+
+`seo-technical` checks 9 categories: crawlability, indexability, security, URL structure, mobile, Core Web Vitals, structured data, JavaScript rendering, and IndexNow protocol.
+
+**Critical checks at launch:**
+- robots.txt must NOT block `/` or any service page slug
+- No pages should have `noindex` set in Rank Math (common mistake left from draft mode)
+- HTTPS redirect confirmed: HTTP → HTTPS for all URLs
+- Mobile rendering passes: GeneratePress is mobile-friendly but confirm on the actual domain
+- All canonical tags are self-referencing (`/bespoke-suit-tailor/` points to itself — not to homepage)
+
+Fix any CRITICAL or HIGH severity findings before submitting pages to Google Indexing API.
+
+### 11b — Sitemap validation with seo-sitemap
+
+Before submitting the sitemap to GSC in Section 8, validate it:
+
+```
+/seo sitemap [domain]
+```
+
+`seo-sitemap` checks:
+- All P1 service pages appear in the sitemap
+- No noindexed pages are included (they must not be in the sitemap)
+- `lastmod` dates are accurate
+- URL count matches the number of published pages
+
+**Common issue at launch:** Rank Math sometimes excludes the homepage from the sitemap when it's set as a "static front page" — confirm `yourdomain.com/` appears in the sitemap XML before submitting.
+
+After validation passes, submit: `yourdomain.com/sitemap_index.xml` to GSC → Sitemaps.
+
+### 11c — Image SEO audit with seo-images
+
+After ShortPixel has processed and converted all uploaded images:
+
+```
+/seo images [domain]
+```
+
+`seo-images` checks:
+- Alt text present on ALL images (missing alt = accessibility failure + lost image search traffic)
+- Alt text is descriptive and includes the primary service entity and location (e.g., "bespoke suit tailoring in Ko Samui" — NOT "image" or the raw filename)
+- All images served as WebP format
+- No image file over 100KB after compression (oversized images trigger LCP failures)
+- Hero/featured images have an `ImageObject` schema entry
+
+**Target standard:** Every image on every P1 page has unique, entity-specific alt text. Re-upload any image ShortPixel failed to convert.
+
+### 11d — SEO drift baseline (one-time, run at launch only)
+
+After all P1 pages are live, all technical checks pass, and the first batch of indexing requests has been submitted — capture the initial baseline snapshot:
+
+```
+/seo drift [domain] --baseline
+```
+
+This creates the reference snapshot for all future weekly drift checks. `seo-drift` records 13 SEO-critical elements per tracked page:
+- Title tag, meta description, canonical URL
+- robots meta tag, H1, H2/H3 structure  
+- JSON-LD schema hash, Open Graph tags
+- Core Web Vitals baseline, HTTP status, full HTML hash
+
+**Run this ONCE after launch when the site is in its correct, validated state.** Running on a broken or incomplete site records the wrong baseline and makes future drift reports meaningless.
+
+After the baseline is captured, the weekly pipeline's Step W9 (`/seo drift --check`) compares against it automatically. No need to re-run `--baseline` unless you intentionally redesign the site.
+
+**Add to setup-checklist.md:**
+
+```
+### Technical SEO Baseline (Step 11)
+- [ ] /seo technical [domain] — no critical issues found
+- [ ] /seo sitemap [domain] — all P1 pages included, no noindexed pages in sitemap
+- [ ] /seo images [domain] — all images have descriptive alt text, WebP format confirmed
+- [ ] /seo drift [domain] --baseline — initial snapshot captured (run ONCE only)
+```

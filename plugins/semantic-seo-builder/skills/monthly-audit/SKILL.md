@@ -112,8 +112,17 @@ Review each published page. Flag as Thin or Stale using the same criteria as bef
 - A page with impressions but position > 20 = content is relevant but weak — needs expansion and attribute coverage improvement
 - A page with good impressions and position 4–10 = close to winning — targeted improvement here gives fastest ROI
 
-| Page | GSC Position | GSC Impressions | Content Status | Action |
-|------|-------------|----------------|---------------|--------|
+**Attribute coverage check (run for every page at position 4–20):**
+
+Open `02-semantic-research.md`. For the page's primary entity, check the attribute matrix:
+1. Are ALL Popular attributes (present on 8+ of top 20 competitor pages) covered on this page? Missing popular attributes are the most likely cause of underperformance.
+2. Are ALL Prominent attributes (in H1 or first 200 words of top 3 competitor pages) either in the H1 or the opening paragraph? If not, the page signals weak topical relevance to Google.
+3. Is at least 1 Relevant attribute (PAA but <4 of top 20 pages) covered? If not, the page has no differentiation from competitors.
+
+Add a column to the content audit table: `Missing Attributes (from 02-semantic-research.md)` — list by name. These become the specific content additions for that page's next refresh.
+
+| Page | GSC Position | GSC Impressions | Content Status | Missing Attributes | Action |
+|------|-------------|----------------|---------------|-------------------|--------|
 
 ---
 
@@ -303,8 +312,6 @@ Check: view page source → search for `floorLevel` → confirm it appears OUTSI
 
 If missing after an update: re-add via Rank Math → Schema → Custom Schema → paste the `"floorLevel": "[value]"` property back into the JSON-LD block. Flag in monthly report: "floorLevel schema: OK / Missing — re-added"
 
-
-
 ---
 
 ## Integration: claude-blog + claude-seo (monthly enhancement tools)
@@ -373,6 +380,44 @@ Pulls keyword gaps not yet in GSC data — queries competitors rank for that thi
 
 **If DataForSEO is not connected:** skip this section. The GSC Section 4 data is sufficient for the first 6 months.
 
+### Section 14 — Content quality batch scoring with blog-analyze
+
+Run once per month across ALL published blog posts and supporting articles to identify which content needs a rewrite:
+
+```
+/blog analyze --batch --sort score
+```
+
+`blog-analyze` scores every article on a 100-point system across 5 categories:
+- **Content Quality (30pts):** depth, specificity, answer-first format, expert signals
+- **SEO (25pts):** title/meta tag quality, heading structure, internal links, keyword density
+- **E-E-A-T (15pts):** author signals, entity clarity, sourced claims
+- **Technical (15pts):** schema, canonical, OG tags, mobile formatting
+- **AI Citation Readiness (15pts):** citability score, citation capsules, Q&A structure
+
+Also runs AI content detection: burstiness (sentence length variance), 17 AI phrase patterns (em dashes, "delve into", "it's worth noting", etc.), and type-token ratio — flags articles at risk of Google quality filters.
+
+**Action thresholds:**
+
+| Score | Action |
+|-------|--------|
+| 85–100 | OK — monitor only |
+| 70–84 | Targeted fix (usually schema or intro paragraph) |
+| < 70 | Schedule `/blog rewrite` this month (add to Section 9 queue) |
+
+**Cross-reference with GSC data from Section 1c:** a low-scoring article with high impressions is the highest-priority rewrite — it's getting traffic but underperforming because the content is weak.
+
+Sorting ascending (`--sort score`) shows the weakest articles first. Fix or rewrite in that order.
+
+**Add to monthly report:**
+
+```
+## Blog Quality Scores — [YYYY-MM]
+| Article | Score | Weakest Category | AI Detection | Action |
+|---------|-------|-----------------|-------------|--------|
+| [article title] | [N]/100 | [e.g. E-E-A-T] | Clean / Flagged | OK / Fix / Rewrite |
+```
+
 ---
 
 ### Updated monthly report structure (add these sections):
@@ -380,6 +425,11 @@ Pulls keyword gaps not yet in GSC data — queries competitors rank for that thi
 After the existing 8 sections, append:
 
 ```
+## Blog Quality Scores — [YYYY-MM]
+| Article | Score | Weakest Category | AI Detection | Action |
+|---------|-------|-----------------|-------------|--------|
+| [article title] | [N]/100 | [category] | Clean / Flagged | OK / Fix / Rewrite |
+
 ## Content Refresh Log — [month]
 - Pages rewritten: [list]
 - Blog-rewrite improvements: [before/after position if known]
@@ -394,3 +444,82 @@ After the existing 8 sections, append:
 - Top new links: [list]
 - Issues: [any toxic or over-optimized anchor text]
 ```
+
+---
+
+## CoR Step — 100-Point Semantic Compliance Audit
+
+Run this audit on the **top 3 traffic pages** each month (or any page flagged with declining rankings). Reference `cor/audits/semantic-compliance.md` for full scoring sheets.
+
+### Scoring System (6 categories, 100 points total)
+
+**1. Contextual Flow — 20 points**
+
+| Criterion | Points |
+|-----------|--------|
+| H1→H2→H3 logical order, attributes flow Unique→Root→Rare | 4 |
+| Contextual bridges between sections (no abrupt topic jumps) | 4 |
+| Subordinate text: first sentence after every heading directly answers heading | 4 |
+| Discourse integration: anchor segments connect paragraphs | 4 |
+| Correct attribute priority ordering throughout | 4 |
+
+**2. EAV Quality — 20 points**
+
+| Criterion | Points |
+|-----------|--------|
+| All key facts in explicit S-P-O triple structure | 4 |
+| All values specific — no "many", "some", "often", "affordable" | 4 |
+| Values consistent with 01-foundation.md KBT table | 4 |
+| Correct modality: "is" for facts, "can" for possibilities | 4 |
+| Claims have verifiable sources or owner confirmation | 4 |
+
+**3. Information Density — 15 points**
+
+| Criterion | Points |
+|-----------|--------|
+| One unique fact per sentence | 3 |
+| No filler words (actually, basically, really, very, overall…) | 3 |
+| No redundant restatements | 3 |
+| Average sentence length < 30 words | 3 |
+| No fluff paragraphs (every paragraph adds at least one EAV triple) | 3 |
+
+**4. Link Compliance — 15 points**
+
+| Criterion | Points |
+|-----------|--------|
+| Same anchor text used max 3× per page | 3 |
+| All internal links placed AFTER entity/concept is defined | 3 |
+| Annotation text (surrounding text) semantically supports each link | 3 |
+| Total internal links per page < 150 | 3 |
+| Links in main content area outweigh boilerplate links | 3 |
+
+**5. Format Compliance — 15 points**
+
+| Criterion | Points |
+|-----------|--------|
+| Content format matches search intent (list for how-to, table for comparison) | 3 |
+| Lists preceded by intro sentence stating item count | 3 |
+| Featured Snippet answer present: < 40 words directly after H2 | 3 |
+| Visual hierarchy: most important content prominent | 3 |
+| Semantic HTML used (article, section, h1-h3, ul/ol, table) | 3 |
+
+**6. Technical Compliance — 15 points**
+
+| Criterion | Points |
+|-----------|--------|
+| Schema correctly implemented, no validation errors | 3 |
+| Image alt text varies with topical attributes (not repeated H1) | 3 |
+| URL structure: lowercase, hyphens, entity name, max 5 words | 3 |
+| Page TTFB < 100ms (check GSC crawl stats) | 3 |
+| DOM node count < 1,500 | 3 |
+
+### Compliance Score Thresholds
+
+| Score | Status | Action |
+|-------|--------|--------|
+| 90–100 | Excellent | Monitor monthly |
+| 85–89 | Good — meets threshold | Minor improvements only |
+| 70–84 | Needs improvement | Schedule rewrite within 30 days |
+| < 70 | Failing | Priority rewrite this week |
+
+Add the score for each audited page to `monthly-report.md` as: `Page | Score | Category Breakdown | Priority Action`
