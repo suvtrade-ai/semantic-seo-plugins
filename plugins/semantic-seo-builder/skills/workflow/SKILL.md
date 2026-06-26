@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: Full end-to-end Semantic SEO pipeline for local business websites following Koray Tuğberk Gübür's framework. 7 phases: Foundation → Semantic Research → Topical Authority → Content System → Technical & Local SEO → Static HTML Pages (responsive, mobile, images) → Site Launch (hosting, WordPress, GBP, GA4, GSC). Use when the user says "workflow", "/workflow", "build my SEO site", "start the framework", "run the pipeline", "semantic SEO pipeline", "start from scratch", "full Koray framework", or "build a local business site with Semantic SEO".
+description: Full end-to-end Semantic SEO pipeline for local businesses. 7 phases: Foundation (SerpAPI+Tavily+Apify) → Semantic Research → Topical Authority → Content System → Technical+Local SEO → Static HTML Pages → Site Launch (Hostinger, WordPress, GBP, GA4, GSC). Use when user says workflow, build my SEO site, start the framework, or run the pipeline.
 tools:
   - Read
   - Write

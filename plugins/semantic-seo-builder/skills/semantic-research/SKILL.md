@@ -1,6 +1,6 @@
 ---
 name: semantic-research
-description: Runs Phase 2 of the Semantic SEO framework — Semantic Research using Koray Tuğberk Gübür's methodology. Identifies and validates entities, builds attribute matrices (popular, prominent, relevant), maps entity relationships, and defines context vectors and topical boundaries. Produces 02-semantic-research.md. Use when the user says "semantic research", "/semantic-research", "entity research", "attribute research", "entity validation", "entity map", "context vectors", "topical boundary", "what entities should my site cover", or "start Phase 2".
+description: Runs Phase 2 of the Semantic SEO framework using Koray's methodology. Automates attribute data collection via Apify bulk scraping and SerpAPI PAA. Builds entity maps, attribute matrices (popular, prominent, relevant), context vectors, and topical boundaries. Produces 02-semantic-research.md. Use when user says semantic research or start Phase 2.
 tools:
   - Write
   - WebSearch

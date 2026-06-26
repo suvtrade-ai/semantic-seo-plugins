@@ -1,6 +1,6 @@
 ---
 name: indexing
-description: Programmatic Google indexing for Semantic SEO sites via the Google Indexing API and URL Inspection API. Three modes: launch (batch submit all P1/P2 pages + sitemap on go-live), weekly (submit new article URL after publish + crawl check), monthly (index health audit, detect deindexed pages, re-submit). Use when user says "index my site", "submit to Google", "crawl check", "why isn't my page indexed", "submit sitemap", "indexing setup", "/indexing", or when one-time-setup or weekly-pipeline triggers indexing steps.
+description: Programmatic Google indexing via Indexing API and URL Inspection API. Three modes: launch (batch submit all pages + sitemap), weekly (submit new article + crawl check), monthly (index health audit, detect deindexed pages, re-submit). Use when user says index my site, submit to Google, crawl check, why isn't my page indexed, or /indexing.
 tools:
   - Read
   - Write

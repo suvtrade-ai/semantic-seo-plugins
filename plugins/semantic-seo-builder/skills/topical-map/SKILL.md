@@ -1,6 +1,6 @@
 ---
 name: topical-map
-description: Runs Phase 3 of the Semantic SEO framework — Topical Authority Building using Koray's methodology. Creates a raw topical map, converts it to a processed hierarchy (pillar → subtopic → supporting), defines topical depth, applies content pruning logic, and designs the internal link architecture. Produces 03-topical-map.md. Use when the user says "topical map", "/topical-map", "topical authority", "content hierarchy", "pillar content", "hub and spoke", "content structure", "build my topical map", "Koray topical map", or "start Phase 3".
+description: Runs Phase 3 of the Semantic SEO framework — Topical Authority Building. Uses SerpAPI keyword expansion and SERP overlap validation to build a 3-tier hierarchy (pillar, subtopic, supporting), content pruning log, and internal link architecture. Produces 03-topical-map.md. Use when user says topical map, topical authority, or start Phase 3.
 tools:
   - Write
   - WebSearch

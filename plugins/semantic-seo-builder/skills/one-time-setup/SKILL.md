@@ -1,6 +1,6 @@
 ---
 name: one-time-setup
-description: Complete one-time site launch checklist for a Semantic SEO local business website. Covers Hostinger account setup, domain selection, WordPress installation, theme and plugin configuration, Rank Math SEO setup, Google Business Profile creation and optimization, GA4 and Google Search Console connection. Produces a setup-checklist.md the user can track progress in. Use when the user says "one-time setup", "/one-time-setup", "launch checklist", "how do I set up my site", "first time setup", "I just bought hosting", "set up WordPress", "set up GBP", "connect analytics", "site launch steps", or "what do I do first".
+description: One-time site launch checklist for a Semantic SEO local business website. Covers Hostinger setup, domain, WordPress install, theme and plugin config, Rank Math SEO, GBP creation, GA4 and GSC connection. Produces setup-checklist.md. Use when user says one-time setup, launch checklist, set up my site, first time setup, or site launch steps.
 tools:
   - Write
   - Read

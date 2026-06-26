@@ -1,6 +1,6 @@
 ---
 name: content-brief
-description: Runs Phase 4 of the Semantic SEO framework — Content System. Builds a content inventory, creates semantic content briefs (not keyword briefs) for each page, maps query path continuity, and produces an internal linking map. Use when the user says "content brief", "/content-brief", "semantic brief", "content inventory", "write a brief", "brief for my pages", "content plan", "query path", "what should my page cover", or "start Phase 4". Also use when the user names a specific page and asks for a semantic brief for it.
+description: Runs Phase 4 of the Semantic SEO framework — Content System. Builds a content inventory, creates semantic content briefs (not keyword briefs) for each page, maps query path continuity, and produces an internal linking map. Use when user says content brief, semantic brief, content inventory, write a brief, content plan, query path, or start Phase 4.
 tools:
   - Write
   - WebSearch

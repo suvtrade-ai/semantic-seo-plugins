@@ -1,6 +1,6 @@
 ---
 name: technical-local
-description: Runs Phase 5 of the Semantic SEO framework — Technical & Local SEO Layer. Designs site architecture aligned with the topical map, defines URL structure rules, internal link flow, crawl efficiency settings, schema markup plan, local SEO signal map, GBP optimization checklist, and WordPress implementation guide. Produces 05-technical-local.md. Use when the user says "technical SEO", "/technical-local", "site architecture", "URL structure", "GBP alignment", "Google Business Profile setup", "schema markup plan", "WordPress SEO setup", "crawl efficiency", "local SEO signals", or "start Phase 5".
+description: Runs Phase 5 of the Semantic SEO framework — Technical & Local SEO Layer. Designs site architecture, URL structure, internal link flow, crawl settings, schema markup plan, local SEO signal map, GBP optimization checklist, and WordPress implementation guide. Produces 05-technical-local.md. Use when user says technical SEO, site architecture, or start Phase 5.
 tools:
   - Write
   - Read

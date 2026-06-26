@@ -1,6 +1,6 @@
 ---
 name: html-pages
-description: Phase 6 of the Semantic SEO pipeline. Generates fully responsive, mobile-optimised static HTML preview pages from the Phase 1-5 blueprint documents. Reads 01-foundation.md through 05-technical-local.md, builds every page in the content inventory (homepage, service pages, about, contact, blog index, individual blog articles), generates images via Kie API for each section, and saves all files to a preview/ directory. Use when the user says "generate pages", "build HTML pages", "create preview pages", "html-pages", "/html-pages", or when workflow reaches Phase 6.
+description: Phase 6 of the Semantic SEO pipeline. Generates fully responsive mobile-optimised static HTML preview pages from Phase 1-5 blueprint documents. Builds homepage, service pages, about, contact, blog index, and individual articles. Saves all files to a preview/ directory. Use when user says generate pages, build HTML pages, or create preview pages.
 tools:
   - Read
   - Write

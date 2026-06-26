@@ -1,6 +1,6 @@
 ---
 name: monthly-audit
-description: Monthly SEO audit and content refresh pipeline for a Semantic SEO local business site. Pulls real ranking data from Google Search Console via Composio, checks indexation status, identifies thin or stale content, finds new keyword opportunities, refreshes competitor gap analysis, and produces a monthly report. Use when the user says "monthly audit", "/monthly-audit", "monthly check", "check my rankings", "update my content", "refresh my site", "monthly SEO report", "content audit", "how is my site performing", or when a scheduled task triggers this skill.
+description: Monthly SEO audit for a Semantic SEO local business site. Runs SerpAPI live rank checks, Tavily content freshness audit, GSC performance pull, indexation check, content scoring, competitor gap refresh. Produces monthly-report-YYYY-MM.md. Use when user says monthly audit, check my rankings, content audit, monthly SEO report, or /monthly-audit.
 tools:
   - Read
   - Write

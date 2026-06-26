@@ -1,7 +1,7 @@
 {
   "name": "semantic-seo-builder",
   "version": "0.9.3",
-  "description": "Koray Semantic SEO pipeline for local businesses. 5-phase: Foundation (SerpAPI+Tavily+Apify research, customer voice, persona, competitor baseline), Semantic Research (Apify bulk scrape, SerpAPI PAA, entities, SERP clustering), Topical Map (SerpAPI overlap validation, hub-and-spoke + intent validation), Content (brief→write→factcheck→schema→GEO→images), Technical & Local SEO. Track 2: weekly pipeline (Tavily pre-research) + monthly audit (SerpAPI rank check, Tavily freshness). Images: Gemini 2K + GPS geotag + JPEG pipeline. Integrates claude-seo and claude-blog.",
+  "description": "Koray Semantic SEO pipeline for local businesses. 5-phase research (SerpAPI+Tavily+Apify), entity mapping, topical authority, content system, technical+local SEO. Weekly pipeline with Tavily pre-research. Monthly audit with live rank checks. Gemini 2K image generation with GPS geotag. Integrates claude-seo and claude-blog.",
   "author": {
     "name": "Mohan"
   },

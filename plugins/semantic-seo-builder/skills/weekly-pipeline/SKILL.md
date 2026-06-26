@@ -1,6 +1,6 @@
 ---
 name: weekly-pipeline
-description: Weekly content operations pipeline for a Semantic SEO local business site. Each run produces one fully written, SEO-optimized blog post or supporting article (with semantic brief, full content, internal links, and schema), plus a matching Google Business Profile post. Tracks what has been published. Use when the user says "weekly pipeline", "/weekly-pipeline", "write this week's blog post", "weekly content", "publish a blog post", "GBP post", "what do I publish this week", "weekly SEO task", or when a scheduled task triggers this skill.
+description: Weekly content operations pipeline. Runs Tavily pre-research before writing, then produces one SEO-optimized article with semantic brief, entity coverage, internal links, schema, and a matching GBP post. Tracks published content. Use when user says weekly pipeline, write this week's blog post, weekly content, publish a blog post, or weekly SEO task.
 tools:
   - Read
   - Write

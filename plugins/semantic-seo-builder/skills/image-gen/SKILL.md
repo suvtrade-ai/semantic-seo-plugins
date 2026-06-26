@@ -1,6 +1,6 @@
 ---
 name: image-gen
-description: Context-aware AI image generation for local business websites using the Gemini API (gemini-3.1-flash-image-preview, Nano Banana 2, 2K resolution). Reads page content and structure, identifies every section that needs an image, generates unique section-appropriate images, geotags every JPEG with business GPS coordinates for local SEO, compresses to under 200KB, and returns mobile-optimised placement HTML with correct alt text and semantic filenames. Works for any page type — service pages, blog articles, about sections, process sections, fabric/material sections, etc. Use when user says "generate images", "add images to this page", "create hero image", "images for my site", "/image-gen", or when weekly-pipeline or content-brief needs images after writing a page.
+description: AI image generation for local business websites via Gemini API (gemini-3.1-flash-image-preview, 2K resolution). Reads page content, maps sections, generates geotagged JPEG images with city-level GPS for local SEO, compresses to under 200KB. Use when user says generate images, add images, create hero image, images for my site, or /image-gen.
 tools:
   - Read
   - Write

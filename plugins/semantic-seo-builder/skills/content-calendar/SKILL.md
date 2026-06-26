@@ -1,6 +1,6 @@
 ---
 name: content-calendar
-description: Builds a 3-month content calendar for a Semantic SEO local business site, maps every article to the topical map, and optionally sets up automated scheduled tasks so Claude runs the weekly pipeline and monthly audit automatically. Use when the user says "content calendar", "/content-calendar", "content schedule", "plan my content", "3 month plan", "schedule my posts", "automate my content", "when should I publish", "set up automatic content", "schedule weekly pipeline", or "schedule monthly audit".
+description: Builds a 3-month content calendar for a Semantic SEO local business site, maps every article to the topical map, and optionally sets up automated scheduled tasks. Use when user says content calendar, content schedule, plan my content, 3 month plan, schedule my posts, automate my content, or when should I publish.
 tools:
   - Read
   - Write
