@@ -4,6 +4,7 @@ description: Runs Phase 1 of the Semantic SEO framework — Foundation & Strateg
 tools:
   - Write
   - WebSearch
+  - Bash
 ---
 
 # Foundation & Strategy (Phase 1)
@@ -60,6 +61,142 @@ Invoke `/blog persona` to define the brand voice before any content is written:
 - Saves as a persona file used automatically by blog-write, blog-brief, and weekly-pipeline
 
 Ask the user: "How would you describe the brand voice? (e.g. professional and precise, friendly and approachable, luxury and exclusive)" — use their answer to configure the persona.
+
+---
+
+## Step 0d — SerpAPI + Tavily + Apify Research Layer (always run)
+
+This step runs three APIs in parallel to collect real SERP data, market intelligence, and competitor content before any manual analysis. It replaces guesswork with structured evidence.
+
+**Required env vars:** `SERPAPI_API_KEY`, `TAVILY_API_KEY`, `APIFY_API_TOKEN`
+
+### 1. SerpAPI — SERP signals for primary keyword
+
+```python
+import os, requests, json
+
+SERPAPI_KEY = os.environ.get("SERPAPI_API_KEY")
+primary_query = f"{service} {city}"  # e.g. "custom tailor Bangkok"
+
+params = {
+    "engine": "google",
+    "q": primary_query,
+    "api_key": SERPAPI_KEY,
+    "num": 20,
+    "gl": "th",        # set to business country ISO code
+    "hl": "en"
+}
+data = requests.get("https://serpapi.com/search", params=params).json()
+
+organic     = data.get("organic_results", [])
+paa         = [q["question"] for q in data.get("related_questions", [])]
+local_pack  = data.get("local_results", {}).get("places", [])
+related     = [s["query"] for s in data.get("related_searches", [])]
+has_map     = len(local_pack) > 0
+has_snippet = any("snippet" in r for r in organic[:3])
+
+print(f"SERP signals for: {primary_query}")
+print(f"  Local pack present: {has_map} ({len(local_pack)} businesses)")
+print(f"  Featured snippet: {has_snippet}")
+print(f"  PAA questions ({len(paa)}): {paa}")
+print(f"  Related searches: {related}")
+print(f"  Top organic URLs:")
+for r in organic[:5]:
+    print(f"    {r.get('position')}. {r.get('title')} — {r.get('link')}")
+```
+
+**Use the output to:**
+- Set `has_map_pack` flag (drives GBP priority in Phase 5)
+- Pre-populate the PAA → FAQ section of relevant pages
+- Add related searches as secondary keyword targets in the intent map
+- Use top 5 organic URLs as competitor extraction targets below
+
+### 2. Tavily — Market intelligence synthesis
+
+```python
+from tavily import TavilyClient
+import os
+
+tavily = TavilyClient(api_key=os.environ.get("TAVILY_API_KEY"))
+
+# Market overview
+market = tavily.search(
+    f"{service} {city} market overview pricing competition 2025",
+    max_results=8,
+    search_depth="advanced",
+    include_answer=True
+)
+
+# Customer language
+customers = tavily.search(
+    f"who uses {service} in {city} tourist expat local review",
+    max_results=5,
+    search_depth="advanced",
+    include_answer=True
+)
+
+print("=== Market Intelligence ===")
+print(market.get("answer", "No synthesis available"))
+print("\n=== Customer Profiles ===")
+print(customers.get("answer", "No synthesis available"))
+```
+
+**Use the output to:**
+- Seed the Market Segmentation section with real demographic data
+- Validate or challenge the DISCOURSE.md customer segments
+- Identify pricing data points that competitors publish (or hide)
+
+### 3. Apify google-search-scraper — Bulk competitor content extraction
+
+```python
+from apify_client import ApifyClient
+import os
+
+apify = ApifyClient(os.environ.get("APIFY_API_TOKEN"))
+
+run = apify.actor("apify/google-search-scraper").call(run_input={
+    "queries": primary_query,
+    "resultsPerPage": 10,
+    "maxPagesPerQuery": 1,
+    "countryCode": "TH",        # set to business country
+    "languageCode": "en",
+    "includeUnfilteredResults": False,
+})
+
+serp_items = list(apify.dataset(run["defaultDatasetId"]).iterate_items())
+for item in serp_items:
+    for result in item.get("organicResults", [])[:5]:
+        print(f"  {result.get('position')}. {result.get('title')}")
+        print(f"     URL: {result.get('url')}")
+        print(f"     Desc: {result.get('description', '')[:120]}")
+```
+
+**Use the output to:**
+- Confirm top 5 competitor URLs (cross-reference with SerpAPI)
+- Extract meta descriptions to map competitor positioning angles
+- Identify which pages Google is rewarding (page type: homepage / service page / directory listing)
+
+### Store research results
+
+After all three APIs complete, write a `research-raw.json` file:
+
+```python
+import json
+with open("research-raw.json", "w") as f:
+    json.dump({
+        "primary_query": primary_query,
+        "has_map_pack": has_map,
+        "local_pack_businesses": [p.get("title") for p in local_pack],
+        "paa_questions": paa,
+        "related_searches": related,
+        "top5_organic_urls": [r.get("link") for r in organic[:5]],
+        "tavily_market_summary": market.get("answer", ""),
+        "tavily_customer_summary": customers.get("answer", ""),
+    }, f, indent=2)
+print("Saved research-raw.json")
+```
+
+Read `research-raw.json` when filling in Market Research, Search Intent Map, and ICP Profiles below. Do not re-run the APIs — use the cached data.
 
 ---
 
@@ -149,88 +286,4 @@ Write 2–3 ICP profiles using this exact template. Reference DISCOURSE.md for l
 |------|-----------------|----------------------|
 | Query contains "price", "cost", "how much", "rates", "quote" | Transactional | Service page with visible price range or at minimum "from X" |
 | Query contains "near me", "in [city]", "in [neighborhood]", "[city] tailor" | Transactional / Local | GBP listing + service page with address + LocalBusiness schema |
-| Query contains "book", "appointment", "contact", "call", "WhatsApp" | Transactional | Contact page or service page with click-to-call / WhatsApp button |
-| Query contains "best", "top", "vs", "review", "recommend", "quality" | Commercial | Service page with trust signals: reviews, photos, credentials, comparison |
-| Query contains "how to", "what is", "what fabric", "how long does", "can a tailor" | Informational | Supporting blog article (do NOT target with a service page) |
-| Query contains business name | Navigational | Homepage or About page |
-| Google shows a **map pack** for this query | Local intent dominant | GBP + service page with strong NAP consistency |
-| Google shows a **featured snippet** for this query | Informational | Blog post structured to match the snippet format (list / paragraph / table) |
-
-Build the intent table across the 15–20 most important queries for this business:
-
-```
-| Query                            | Intent         | SERP has map pack? | Target page type          | CTA on that page        |
-|----------------------------------|----------------|--------------------|---------------------------|-------------------------|
-| custom tailor [city]             | Transactional  | Yes                | Service page + GBP        | Call / WhatsApp / Book  |
-| how long does tailoring take     | Informational  | No                 | Blog article              | Internal link → service |
-| [city] suit fitting              | Commercial     | Yes                | Service page              | Portfolio + Reviews     |
-```
-
-## Competitor Gap Analysis
-
-For each of the 3 competitors extracted in Market Research, fill this framework:
-
-```
-Competitor: [Name]
-
-Semantic gaps (topics they mention but cover shallowly):
-- [H2 heading they have but with thin content — e.g. "Pricing" section with no actual prices]
-- [Process section missing steps]
-
-Topical gaps (entire topic areas absent from their site):
-- [e.g. No dedicated express tailoring page]
-- [e.g. No fabric guide]
-- [e.g. No hotel/in-room fitting page]
-
-Entity gaps (entities they fail to name explicitly):
-- [e.g. No mention of specific fabric brands]
-- [e.g. No mention of specific neighborhoods or hotel names they serve]
-- [e.g. No certification names]
-
-Opportunity rating: High / Medium / Low
-(High = gap is also a high-search-intent query; Low = gap exists but nobody is searching for it)
-```
-
-After completing all 3 competitors, consolidate into a **Priority Gap Table**:
-
-```
-| Gap topic                    | Found in N/3 competitors | Search intent | Priority |
-|------------------------------|--------------------------|---------------|----------|
-| [topic]                      | [0/1/2/3 competitors]    | [type]        | High/Med/Low |
-```
-
-Gaps absent from all 3 competitors with Transactional or Commercial intent = **highest priority content to build first**.
-
----
-
-## CoR Step — Central Entity Attribute Mapping
-
-After the competitor gap analysis, define the **EAV attribute hierarchy** for the Central Entity (CE). This feeds directly into Phase 2 entity research and every content brief. Reference `cor/frameworks/eav-architecture.md` for full rules.
-
-**Attribute types (priority order — highest to lowest):**
-
-| Type | Definition | Rule |
-|------|-----------|------|
-| **Unique Attributes** | Features that uniquely identify this CE — no other entity shares the same attribute+value | Place early in all content. These prove expertise. |
-| **Root Attributes** | Essential for basic definition of the CE — without these, the entity is incomplete | Must be covered on every core page. |
-| **Rare Attributes** | Specific details not commonly found — proves depth of knowledge | Use to differentiate from competitors. |
-
-**Output a table in `01-foundation.md`:**
-
-```
-Central Entity (CE): [business type + city]
-
-| Attribute Type | Attribute | Value | Notes |
-|----------------|-----------|-------|-------|
-| Unique | [e.g. speciality not offered by competitors] | [specific value] | |
-| Unique | | | |
-| Root | [e.g. price range, turnaround time, location] | [specific value] | |
-| Root | | | |
-| Root | | | |
-| Rare | [e.g. specific technique, certification, niche process] | [specific value] | |
-| Rare | | | |
-```
-
-**KBT rule:** once these values are written here, they are locked. Every page, schema markup, and GBP listing must use the exact same values. Contradictions across pages destroy Knowledge-Based Trust (KBT) and increase Cost of Retrieval. See `cor/concepts/cost-of-retrieval.md`.
-
-Produce the file `01-foundation.md` and confirm it was saved.
+| Query co

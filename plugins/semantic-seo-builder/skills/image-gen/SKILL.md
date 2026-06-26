@@ -1,6 +1,6 @@
 ---
 name: image-gen
-description: Context-aware AI image generation for local business websites using the Kie API (Nano Banana / Google Gemini Imagen). Reads page content and structure, identifies every section that needs an image, generates unique section-appropriate images, compresses WebP to under 100KB, and returns mobile-optimised placement HTML with correct alt text and semantic filenames. Works for any page type — service pages, blog articles, about sections, process sections, fabric/material sections, etc. Use when user says "generate images", "add images to this page", "create hero image", "images for my site", "/image-gen", or when weekly-pipeline or content-brief needs images after writing a page.
+description: Context-aware AI image generation for local business websites using the Gemini API (gemini-3.1-flash-image-preview, Nano Banana 2, 2K resolution). Reads page content and structure, identifies every section that needs an image, generates unique section-appropriate images, geotags every JPEG with business GPS coordinates for local SEO, compresses to under 200KB, and returns mobile-optimised placement HTML with correct alt text and semantic filenames. Works for any page type — service pages, blog articles, about sections, process sections, fabric/material sections, etc. Use when user says "generate images", "add images to this page", "create hero image", "images for my site", "/image-gen", or when weekly-pipeline or content-brief needs images after writing a page.
 tools:
   - Read
   - Write
@@ -66,19 +66,19 @@ Page: services/bespoke-suits.html
 Section: Hero
   Type: Wide cinematic
   Entity: bespoke suit on dress form, luxury tailor workshop
-  Filename: bespoke-suit-dress-form-hero-[business-slug].webp
+  Filename: bespoke-suit-dress-form-hero-[business-slug].jpg
   Alt: Bespoke suit on dress form at [Business Name], [City]
 
 Section: Our Process
   Type: Hands / craft action
   Entity: tailor pinning suit jacket shoulder seam
-  Filename: tailor-pinning-suit-shoulder-seam-[business-slug].webp
+  Filename: tailor-pinning-suit-shoulder-seam-[business-slug].jpg
   Alt: Expert tailor pinning bespoke suit shoulder at [Business Name]
 
 Section: Fabric Selection
   Type: Flat lay
   Entity: premium wool suiting fabric swatches dark tones
-  Filename: premium-wool-suiting-fabric-swatches-[business-slug].webp
+  Filename: premium-wool-suiting-fabric-swatches-[business-slug].jpg
   Alt: Premium wool and linen fabric swatches for bespoke suits at [Business Name]
 ```
 
@@ -89,10 +89,10 @@ Section: Fabric Selection
 Before generating, check the `images/` directory. If a filename already exists, do not regenerate it — reuse it only if the entity and context are genuinely the same section. Otherwise, create a differentiated filename.
 
 ```bash
-ls images/*.webp 2>/dev/null && echo "---existing images above---" || echo "No existing images"
+ls images/*.jpg 2>/dev/null && echo "---existing images above---" || echo "No existing images"
 ```
 
-If you find an image like `tailor-workshop-interior.webp` already used on the homepage, do NOT use it again on the About page. Instead generate `tailor-workshop-workbench-closeup.webp` or `tailor-atelier-interior-detail.webp`.
+If you find an image like `tailor-workshop-interior.jpg` already used on the homepage, do NOT use it again on the About page. Instead generate `tailor-workshop-workbench-closeup.jpg` or `tailor-atelier-interior-detail.jpg`.
 
 ---
 
@@ -163,90 +163,159 @@ No people. No text. No watermarks. Photorealistic.
 
 ---
 
-## Step 4 — Generate images (batch — all at once)
+## Step 4 — Generate images via Gemini API (Nano Banana 2)
 
-Fire ALL image jobs simultaneously. Never generate one at a time.
+Generate one image per section using the Gemini REST API directly. Images are sequential (Gemini doesn't support true parallel image batching), so fire them in a loop.
+
+**Required:** `GEMINI_API_KEY` env var.  
+**Model:** `gemini-3.1-flash-image-preview` (Nano Banana 2, up to 4K)  
+**Resolution:** `2K` for hero/service, `1K` for process/blog inline  
+**Format:** PNG (Gemini output) → JPEG (after geotag conversion)
 
 ```python
-import json, subprocess, time, os
+import os, base64, json, requests
 
-KIE_API_KEY = "d3cc526a8f8241e1b35f7226a37ef49b"
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent"
 
-task_ids = {}
+os.makedirs("images", exist_ok=True)
 
-for section_name, prompt, filename in image_queue:
-    result = mcp__kie-ai-mcp-server__generate_nano_banana(
-        api_key=KIE_API_KEY,
-        prompt=prompt
-    )
-    task_ids[section_name] = {
-        "task_id": result["data"]["taskId"],
-        "filename": filename
+generated = {}
+
+for section_name, prompt, base_filename in image_queue:
+    # Hero images: 2K + 16:9 | Square/detail: 2K + 1:1 | Blog inline: 1K + 16:9
+    if "hero" in base_filename or "exterior" in base_filename:
+        img_size, aspect = "2K", "16:9"
+    elif "flatlay" in base_filename or "fabric" in base_filename:
+        img_size, aspect = "2K", "1:1"
+    else:
+        img_size, aspect = "2K", "4:3"
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "responseModalities": ["IMAGE"],
+            "imageConfig": {
+                "aspectRatio": aspect,
+                "imageSize": img_size   # MUST be uppercase
+            }
+        }
     }
 
-print(f"Fired {len(task_ids)} jobs simultaneously. Waiting 35 seconds...")
-time.sleep(35)
+    resp = requests.post(
+        f"{GEMINI_URL}?key={GEMINI_KEY}",
+        json=payload,
+        headers={"Content-Type": "application/json"},
+        timeout=120
+    )
+
+    if resp.status_code != 200:
+        print(f"{section_name}: Gemini error {resp.status_code} — {resp.text[:200]}")
+        generated[section_name] = {"status": "failed", "filename": base_filename}
+        continue
+
+    data = resp.json()
+    parts = data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+    img_part = next((p for p in parts if "inlineData" in p), None)
+
+    if not img_part:
+        finish = data.get("candidates", [{}])[0].get("finishReason", "unknown")
+        print(f"{section_name}: No image returned — finishReason={finish}")
+        generated[section_name] = {"status": "blocked", "reason": finish, "filename": base_filename}
+        continue
+
+    # Save raw PNG from base64
+    png_path = f"images/{base_filename}.png"
+    with open(png_path, "wb") as f:
+        f.write(base64.b64decode(img_part["inlineData"]["data"]))
+
+    print(f"{section_name}: PNG saved → {png_path} ({os.path.getsize(png_path)//1024}KB)")
+    generated[section_name] = {"status": "ok", "png": png_path, "filename": base_filename}
 ```
+
+**If Gemini blocks a prompt** (finishReason=IMAGE_SAFETY): rephrase — replace any descriptive words about people, faces, or culturally sensitive elements. Try "a tailor's workshop interior" instead of "a Thai tailor at work".
 
 ---
 
-## Step 5 — Poll, download, and compress
+## Step 5 — Geotag + Convert to JPEG + Compress
 
-Poll every 10 seconds until all jobs complete.
+Every generated PNG goes through this pipeline:
+1. **Convert PNG → JPEG** (Pillow, quality=92) — piexif only works on JPEG
+2. **Embed GPS EXIF** (piexif) — city-level coordinates only, not the exact street address
+3. **Compress** — target <200KB; re-compress at lower quality if over
+
+**GPS rule:** use city-center coordinates, not the exact business address. This gives the local SEO signal without exposing precise location.
 
 ```python
+from PIL import Image
+import piexif, os
+
+# === SET THESE FROM 01-foundation.md OR business intake ===
+BUSINESS_LAT  = 13.7563   # Bangkok example — replace with actual city center lat
+BUSINESS_LON  = 100.5018  # Bangkok example — replace with actual city center lon
+# ==========================================================
+
+def to_dms(value):
+    """Convert decimal degrees to DMS rational tuple for piexif."""
+    d = int(abs(value))
+    m = int((abs(value) - d) * 60)
+    s = round(((abs(value) - d) * 60 - m) * 60 * 10000)
+    return ((d, 1), (m, 1), (s, 10000))
+
+def geotag_jpeg(jpeg_path, lat, lon):
+    exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}}
+    exif_dict["GPS"] = {
+        piexif.GPSIFD.GPSVersionID:    (2, 0, 0, 0),
+        piexif.GPSIFD.GPSLatitudeRef:  b"N" if lat >= 0 else b"S",
+        piexif.GPSIFD.GPSLatitude:     to_dms(lat),
+        piexif.GPSIFD.GPSLongitudeRef: b"E" if lon >= 0 else b"W",
+        piexif.GPSIFD.GPSLongitude:    to_dms(lon),
+    }
+    exif_bytes = piexif.dump(exif_dict)
+    piexif.insert(exif_bytes, jpeg_path)
+
 os.makedirs("images", exist_ok=True)
 
-for section_name, meta in task_ids.items():
-    for attempt in range(6):
-        status = mcp__kie-ai-mcp-server__get_task_status(
-            api_key=KIE_API_KEY,
-            task_id=meta["task_id"]
-        )
-        state = status["api_response"]["data"]["state"]
+for section_name, meta in generated.items():
+    if meta["status"] != "ok":
+        continue
 
-        if state == "success":
-            result_json = json.loads(status["api_response"]["data"]["resultJson"])
-            url = result_json["resultUrls"][0]
+    png_path  = meta["png"]
+    # Filename uses .jpg convention: service-city-description.jpg
+    jpg_name  = meta["filename"].replace(".jpg", "").replace(".png", "") + ".jpg"
+    jpg_path  = f"images/{jpg_name}"
 
-            png_path = f"images/{meta['filename'].replace('.webp', '.png')}"
-            webp_path = f"images/{meta['filename']}"
+    # 1. Convert PNG → JPEG
+    img = Image.open(png_path).convert("RGB")
+    img.save(jpg_path, "JPEG", quality=92)
+    os.remove(png_path)  # clean up PNG
 
-            # Download
-            subprocess.run(["curl", "-s", "-o", png_path, url], check=True)
+    # 2. Geotag the JPEG with city-level GPS
+    geotag_jpeg(jpg_path, BUSINESS_LAT, BUSINESS_LON)
 
-            # Convert to WebP at quality 72 (targets ~60-100KB for photos)
-            subprocess.run([
-                "convert", png_path,
-                "-quality", "72",
-                "-define", "webp:method=6",
-                webp_path
-            ], check=True)
+    # 3. Check size — compress further if over 200KB
+    size_kb = os.path.getsize(jpg_path) / 1024
+    if size_kb > 200:
+        img2 = Image.open(jpg_path).convert("RGB")
+        img2.save(jpg_path, "JPEG", quality=78)
+        geotag_jpeg(jpg_path, BUSINESS_LAT, BUSINESS_LON)  # re-embed after re-save
+        size_kb = os.path.getsize(jpg_path) / 1024
 
-            # Check file size — if over 100KB, re-compress lower
-            size_kb = os.path.getsize(webp_path) / 1024
-            if size_kb > 100:
-                subprocess.run([
-                    "convert", png_path,
-                    "-quality", "60",
-                    "-define", "webp:method=6",
-                    webp_path
-                ], check=True)
-                size_kb = os.path.getsize(webp_path) / 1024
+    # 4. Update meta with final path
+    meta["jpg"] = jpg_path
+    print(f"{section_name}: {jpg_path} ({size_kb:.0f}KB) — GPS {BUSINESS_LAT},{BUSINESS_LON} embedded")
 
-            # Clean up PNG
-            os.remove(png_path)
-
-            print(f"{section_name}: {webp_path} ({size_kb:.0f}KB)")
-            break
-
-        elif state in ("failed", "error"):
-            print(f"{section_name}: FAILED — skipping")
-            break
-        else:
-            print(f"{section_name}: still processing ({state})...")
-            time.sleep(10)
+# Install dependencies if missing:
+# pip install Pillow piexif --break-system-packages
 ```
+
+**Filename convention:** `service-city-description.jpg`
+Examples:
+- `custom-tailor-bangkok-suit-fitting.jpg`
+- `bespoke-suit-bangkok-hero.jpg`
+- `tailor-bangkok-fabric-flatlay.jpg`
+
+**Why JPEG not WebP:** piexif requires JPEG for GPS embedding. WebP does not support EXIF GPS. The local SEO signal from geotagged JPEG outweighs the slight compression advantage of WebP for this use case.
 
 ---
 
@@ -258,7 +327,7 @@ All images use `srcset` + `sizes` and responsive CSS. No fixed pixel heights on 
 ```html
 <div class="img-hero">
   <img
-    src="images/{filename}.webp"
+    src="images/{filename}.jpg"
     alt="{entity-based alt text}"
     width="1200" height="500"
     loading="eager"
@@ -283,7 +352,7 @@ All images use `srcset` + `sizes` and responsive CSS. No fixed pixel heights on 
 ```html
 <figure class="img-section">
   <img
-    src="images/{filename}.webp"
+    src="images/{filename}.jpg"
     alt="{entity-based alt text}"
     width="1200" height="600"
     loading="lazy"
@@ -316,7 +385,7 @@ All images use `srcset` + `sizes` and responsive CSS. No fixed pixel heights on 
 ```html
 <figure class="img-process">
   <img
-    src="images/{filename}.webp"
+    src="images/{filename}.jpg"
     alt="{entity-based alt text}"
     width="800" height="500"
     loading="lazy"
@@ -363,121 +432,4 @@ Format: {Primary entity + detail} at {Business Name}, {Location}
 Good:
 "Bespoke navy suit on tailor's dress form at The Outfit Custom Tailor, Platinum Fashion Mall Bangkok"
 "Expert tailor pinning shoulder seam of grey suit jacket at The Outfit, Bangkok"
-"Premium Italian wool and linen fabric swatches for bespoke suits at The Outfit Custom Tailor"
-"Tailor's cutting table and dress forms inside The Outfit workshop, Bangkok Thailand"
-"Flat lay of navy herringbone suiting wool on dark wood surface, The Outfit Bangkok"
-
-Bad (never use):
-"image of suit"
-"photo of tailor"
-"fabric swatches"
-"hero image"
-```
-
----
-
-## Step 8 — Semantic filename convention
-
-```
-{entity}-{specific-qualifier}-{context}.webp
-
-Rules:
-- Max 60 characters
-- Lowercase, hyphens only, no underscores
-- Must be unique across the entire site — no two pages share a filename
-- Include a business slug or page slug as the last segment when needed for uniqueness
-
-Examples:
-bespoke-suit-dress-form-hero-theoutfit.webp      ← hero, this business
-tailor-pinning-shoulder-seam-bespoke.webp         ← process, specific action
-navy-herringbone-wool-fabric-flatlay.webp         ← fabric, specific type
-tailor-workshop-cutting-table-interior.webp       ← interior, specific element
-wedding-suit-hanger-tropical-corridor.webp        ← occasion, specific scene
-bespoke-trousers-break-detail-closeup.webp        ← service, specific garment detail
-boutique-entrance-golden-hour-bangkok.webp        ← exterior, specific time
-blog-suit-care-folding-travel-method.webp         ← blog, topic-specific
-```
-
-If a filename would duplicate one already in `images/`, append `-[page-slug]` or change the qualifier.
-
----
-
-## Confirm before generating (mandatory step)
-
-When called after content is written, always show this confirmation before firing any API calls:
-
-```
-Ready to generate [N] images for: [page name]
-
-  1. Hero — bespoke-suit-dress-form-hero-theoutfit.webp
-     "DSLR editorial of bespoke suit on dress form, warm golden light..."
-
-  2. Process section — tailor-pinning-shoulder-seam-bespoke.webp
-     "DSLR macro of tailor's hands pinning shoulder seam..."
-
-  3. Fabric section — navy-herringbone-wool-fabric-flatlay.webp
-     "Top-down flat lay of navy herringbone wool, dark wood surface..."
-
-Estimated time: ~35 seconds. Target size: under 100KB each.
-
-Generate? (yes / skip / adjust)
-```
-
-Only proceed after confirmation.
-
----
-
-## Output summary
-
-After all images are placed, report:
-
-```
-Images generated for: [page name]
-
-Hero:
-  bespoke-suit-dress-form-hero-theoutfit.webp — 68KB — placed after <header>
-
-Process section:
-  tailor-pinning-shoulder-seam-bespoke.webp — 54KB — placed before process steps
-
-Fabric section:
-  navy-herringbone-wool-fabric-flatlay.webp — 81KB — placed before fabric grid
-
-Total: 3 images, 203KB combined
-All images: mobile-optimised with clamp() heights, lazy loading, entity alt text
-```
-
----
-
-## Integration with content-brief and weekly-pipeline
-
-When `/content-brief` finishes a page or `/weekly-pipeline` finishes an article:
-
-1. Extract all section headings from the written content
-2. Map each section to an image type (see table in Step 1)
-3. Show the confirmation list (see "Confirm before generating" above)
-4. After approval, batch-fire all jobs (Step 4)
-5. Download, compress to <100KB (Step 5)
-6. Insert mobile-optimised HTML at the correct position in the page (Step 6)
-7. Report the summary
-
-**Always offer image generation after content is written — not just a hero, but every content section that would benefit from a visual.**
-
----
-
-## WordPress upload (Novamira MCP)
-
-After generating and compressing:
-
-```
-mcp__novamira__mcp-adapter-execute-ability(
-    ability="upload_media",
-    parameters={
-        "file_path": "images/{filename}.webp",
-        "alt_text": "{entity-based alt text}",
-        "title": "{descriptive title}"
-    }
-)
-```
-
-Use the returned media URL when inserting into WordPress page content.
+"Premium Italian wool and linen fabric swatches for bespoke suits at The Outfit Custom Ta

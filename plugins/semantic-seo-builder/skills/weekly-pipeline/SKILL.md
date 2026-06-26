@@ -5,6 +5,7 @@ tools:
   - Read
   - Write
   - WebSearch
+  - Bash
 ---
 
 # Weekly Content Pipeline
@@ -30,6 +31,64 @@ Select the next unpublished Tier 3 (supporting content) article from the topical
 - Topics that competitors have thin or missing coverage on
 
 Tell the user: "This week I'll write about: [topic]. This supports your [pillar page] and helps you rank for [related query]."
+
+---
+
+## Step 1b — Tavily pre-research (always run before writing)
+
+Before building the brief, use Tavily to gather current, specific data about this topic. This prevents generic content and surfaces statistics, recent developments, and PAA angles that competitors haven't covered.
+
+```python
+from tavily import TavilyClient
+import os, json
+
+tavily = TavilyClient(api_key=os.environ.get("TAVILY_API_KEY"))
+
+topic = "[this week's article topic]"  # e.g. "how long does bespoke suit tailoring take Bangkok"
+business_context = "[service] [city]"  # from 01-foundation.md
+
+# Deep research on the specific topic
+topic_research = tavily.search(
+    f"{topic}",
+    max_results=8,
+    search_depth="advanced",
+    include_answer=True,
+    include_raw_content=False
+)
+
+# Find what competitors are publishing recently
+competitor_angle = tavily.search(
+    f"{business_context} {topic.split()[0]} blog site:*.com -site:wikipedia.org",
+    max_results=5,
+    search_depth="basic",
+    include_answer=False
+)
+
+print("=== Topic Research Summary ===")
+print(topic_research.get("answer", "No synthesis — use individual results"))
+print("\n=== Competitor Angles ===")
+for r in competitor_angle.get("results", []):
+    print(f"  - {r['title']}: {r['url']}")
+    print(f"    {r.get('content', '')[:150]}")
+
+# Save for use in Step 2
+with open("weekly-research.json", "w") as f:
+    json.dump({
+        "topic": topic,
+        "tavily_summary": topic_research.get("answer", ""),
+        "tavily_sources": [r["url"] for r in topic_research.get("results", [])],
+        "competitor_urls": [r["url"] for r in competitor_angle.get("results", [])],
+    }, f, indent=2)
+print("Saved weekly-research.json")
+```
+
+**Use the Tavily output to:**
+- Identify 1–2 statistics or data points that can be cited in the article
+- Find competitor articles that rank for this topic — note their angle and what they're missing
+- Pull the Tavily answer synthesis as the seed for the article's opening answer-first paragraph
+- Identify if this topic has recent developments (last 3–6 months) that should be mentioned
+
+Read `weekly-research.json` in Step 2 when building the content brief.
 
 ---
 
@@ -88,9 +147,9 @@ Tell the user: "Copy this content into WordPress → Posts → Add New. Replace 
 
 ---
 
-## Step 4b — Generate hero image (optional, requires Kie API key)
+## Step 4b — Generate hero image (requires GEMINI_API_KEY)
 
-After writing the article, if the user has provided a Kie API key, generate a hero image automatically:
+After writing the article, generate a geotagged hero image via the `/image-gen` skill:
 
 1. Extract the primary entity from the article title (e.g., "bespoke linen suit Phuket")
 2. Invoke `/image-gen` with:
@@ -255,64 +314,4 @@ After publishing, run a quick drift check to confirm the new article didn't acci
 
 ### Step W5b — Algorithmic Authorship pass (CoR writing quality gate)
 
-After `/blog write` produces the article draft and **before** factcheck, run the Algorithmic Authorship pass. Reference `cor/frameworks/algorithmic-authorship.md`.
-
-This is a self-review step — read the draft and fix violations before factcheck runs:
-
-**Sentence structure violations to fix:**
-```
-[ ] Any sentence > 30 words → break into two
-[ ] Any ambiguous pronoun (it, they, this, he, she) where entity isn't 100% clear → replace with entity name
-[ ] Any sentence not in S-P-O order → rewrite: [Entity] [verb] [value/target]
-[ ] Any sentence with > 1 fact → split into separate sentences
-```
-
-**Filler words to delete (find and remove every instance):**
-```
-actually, basically, really, very, quite, rather, somewhat, overall,
-in conclusion, as stated before, it goes without saying, needless to say,
-at the end of the day, in my opinion, I had the pleasure of,
-it is important to note that, in today's world
-```
-
-**Modality corrections:**
-```
-[ ] Established facts use "is/are" — not "can be" or "might be"
-[ ] Variable outcomes use "can/may" — not definitive "is"
-[ ] Recommendations use "should" — not "must" (unless legally required)
-[ ] Uncertain claims use "might/could" with a truth range: "typically X–Y days"
-```
-
-**Featured Snippet check:**
-```
-[ ] H1 answered in first paragraph in < 40 words
-[ ] First sentence after EVERY H2/H3 directly answers the heading
-[ ] At least one < 40-word definition block per pillar topic
-```
-
-**AI phrase check — remove these exact patterns:**
-```
-[ ] "In today's world" → replace with specific year or context
-[ ] "It is important to note" → state the fact directly
-[ ] "Overall" at section ends → replace with specific conclusion + data
-[ ] "Firstly / Secondly / Finally" → use numbered lists or direct statements
-[ ] "I had the pleasure of" → state the experience directly
-```
-
-Only proceed to Step W6 (`/blog factcheck`) once the article passes this checklist.
-
----
-
-### Complete weekly sequence summary:
-
-1. `/blog write [topic]`
-2. Algorithmic Authorship pass (W5b)
-3. `/blog factcheck [file]`
-4. `/blog seo-check [file]`
-5. `/blog schema [file]`
-6. `/blog geo [file]`
-7. `/image-gen [file]`
-8. Publish to WordPress
-9. GBP post linking to article
-10. `/seo drift [domain] --check`
-11. Update `weekly-log.md`
+After `/blog write` produces the article draft and **before** factcheck, run the Algorithmic Authorship pass. Reference `cor/frameworks/algorithmic-auth

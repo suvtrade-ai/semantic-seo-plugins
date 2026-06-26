@@ -5,6 +5,7 @@ tools:
   - Read
   - Write
   - WebSearch
+  - Bash
 ---
 
 # Monthly SEO Audit & Content Refresh
@@ -20,6 +21,108 @@ Read these files if they exist:
 - Previous month's report — to compare progress
 
 Ask the user: "What is your site's domain?" (e.g. mysuitbangkok.co or garmanisuit.com) — needed for all GSC calls.
+
+---
+
+## Section 0 — SerpAPI + Tavily Pre-Audit Research
+
+Run before pulling GSC data. These two steps give you the external view (what Google sees) to compare against the internal view (what GSC reports).
+
+### 0a — SerpAPI: check live rankings for key pages
+
+```python
+import os, requests, json
+
+SERPAPI_KEY = os.environ.get("SERPAPI_API_KEY")
+
+# Read tracked keywords from 03-topical-map.md or weekly-log.md
+# Define the pillar keywords to check rankings for
+tracked_keywords = [
+    "[service] [city]",           # primary money keyword
+    "bespoke [service] [city]",   # secondary
+    "[service] price [city]",     # commercial intent
+    # add more from the topical map
+]
+
+rankings = {}
+for kw in tracked_keywords:
+    params = {
+        "engine": "google",
+        "q": kw,
+        "api_key": SERPAPI_KEY,
+        "num": 20,
+        "gl": "th",       # set to business country
+        "hl": "en"
+    }
+    resp = requests.get("https://serpapi.com/search", params=params).json()
+    organic = resp.get("organic_results", [])
+
+    # Find the site's position
+    domain = "[business-domain.com]"  # replace with actual domain
+    position = next(
+        (r["position"] for r in organic if domain in r.get("link", "")),
+        None
+    )
+    local_pack = resp.get("local_results", {}).get("places", [])
+    in_local_pack = any(domain in p.get("website", "") for p in local_pack)
+
+    rankings[kw] = {
+        "position": position,
+        "in_local_pack": in_local_pack,
+        "top3_urls": [r.get("link") for r in organic[:3]],
+        "paa": [q["question"] for q in resp.get("related_questions", [])],
+    }
+    status = f"Position {position}" if position else "Not in top 20"
+    pack = "✓ In local pack" if in_local_pack else "✗ Not in local pack"
+    print(f"  {kw}: {status} | {pack}")
+
+with open("rank-check.json", "w") as f:
+    json.dump(rankings, f, indent=2)
+print("Saved rank-check.json")
+```
+
+Include `rank-check.json` data in the monthly report — compare position to last month's report.
+
+### 0b — Tavily: content freshness research
+
+For each page that's been live for 3+ months and hasn't been updated, run Tavily to check if the topic has new data:
+
+```python
+from tavily import TavilyClient
+import os
+
+tavily = TavilyClient(api_key=os.environ.get("TAVILY_API_KEY"))
+
+# Pages to check for freshness (read from 04-content-system.md)
+stale_pages = [
+    {"slug": "/bespoke-suits-bangkok/", "topic": "bespoke suit tailoring Bangkok 2025"},
+    # add more from content inventory
+]
+
+freshness_data = {}
+for page in stale_pages:
+    result = tavily.search(
+        page["topic"],
+        max_results=5,
+        search_depth="advanced",
+        include_answer=True,
+        days=90  # look for content published in the last 90 days
+    )
+    freshness_data[page["slug"]] = {
+        "recent_content_found": len(result.get("results", [])) > 0,
+        "summary": result.get("answer", ""),
+        "sources": [r["url"] for r in result.get("results", [])],
+    }
+    flag = "⚠ NEW DATA AVAILABLE" if freshness_data[page["slug"]]["recent_content_found"] else "✓ Still current"
+    print(f"  {page['slug']}: {flag}")
+
+print("\nPages needing content refresh based on Tavily freshness check:")
+for slug, data in freshness_data.items():
+    if data["recent_content_found"]:
+        print(f"  → {slug}: {data['summary'][:100]}")
+```
+
+Pages where Tavily finds recent competing content = **priority refresh queue** for this month.
 
 ---
 

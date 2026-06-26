@@ -4,6 +4,7 @@ description: Runs Phase 3 of the Semantic SEO framework — Topical Authority Bu
 tools:
   - Write
   - WebSearch
+  - Bash
 ---
 
 # Topical Authority Building (Phase 3)
@@ -12,8 +13,77 @@ Read `02-semantic-research.md` if it exists for entity and context data. Read `0
 
 Then produce `03-topical-map.md` containing:
 
+## Step 0 — SerpAPI Keyword Expansion
+
+Before building the topical map, use SerpAPI to pull real keyword signals for each pillar theme. This grounds the map in actual search demand rather than editorial guesswork.
+
+```python
+import os, requests, json
+
+SERPAPI_KEY = os.environ.get("SERPAPI_API_KEY")
+
+# Read pillar themes from 02-semantic-research.md entity list
+# Define your pillar seed keywords here
+pillar_seeds = [
+    f"{service} {city}",           # e.g. "custom tailor Bangkok"
+    f"bespoke {service} {city}",
+    f"{service} price {city}",
+    # add one per pillar theme
+]
+
+serp_data = {}
+for seed in pillar_seeds:
+    params = {
+        "engine": "google",
+        "q": seed,
+        "api_key": SERPAPI_KEY,
+        "num": 10,
+        "gl": "th",
+        "hl": "en"
+    }
+    resp = requests.get("https://serpapi.com/search", params=params).json()
+    serp_data[seed] = {
+        "paa":     [q["question"] for q in resp.get("related_questions", [])],
+        "related": [s["query"] for s in resp.get("related_searches", [])],
+        "top_urls": [r["link"] for r in resp.get("organic_results", [])[:10]],
+        "has_map":  len(resp.get("local_results", {}).get("places", [])) > 0,
+    }
+    print(f"\n{seed}: PAA={serp_data[seed]['paa']}, Related={serp_data[seed]['related']}")
+
+with open("serp-keyword-map.json", "w") as f:
+    json.dump(serp_data, f, indent=2)
+print("Saved serp-keyword-map.json")
+```
+
+**Use `serp-keyword-map.json` to:**
+- Expand Tier 3 supporting articles from PAA questions (each PAA = one supporting article)
+- Validate Tier 2 subtopics against related searches (if a related search has no subtopic, add one)
+- Flag pillars where `has_map=True` — those need dedicated local SEO treatment in Phase 5
+- Detect SERP overlap: if two pillar seeds share 4+ of the same `top_urls`, merge them into one pillar
+
+### SERP Overlap Validation
+
+For any two pillar keywords you're considering as separate pages, run this overlap check:
+
+```python
+from itertools import combinations
+
+def overlap_count(urls_a, urls_b):
+    return len(set(urls_a) & set(urls_b))
+
+pairs = list(combinations(pillar_seeds, 2))
+for a, b in pairs:
+    overlap = overlap_count(serp_data[a]["top_urls"], serp_data[b]["top_urls"])
+    verdict = "MERGE" if overlap >= 4 else "KEEP SEPARATE"
+    print(f"{a} vs {b}: {overlap} shared URLs → {verdict}")
+```
+
+**Rule:** ≥4 shared top-10 results = Google treats these as the same topic → merge into one page. <4 = distinct topics → separate pages.
+
+---
+
 ## Raw Topical Map
-Brainstorm 40–80 topics and subtopics within the topical boundary. Use WebSearch to discover topics competitors miss. Flat numbered list.
+Brainstorm 40–80 topics and subtopics within the topical boundary. Seed from `serp-keyword-map.json` (PAA + related searches) and expand with WebSearch for topics competitors miss. Flat numbered list.
 
 ## Processed Topical Map
 Organize into 3-tier hierarchy:
@@ -26,63 +96,4 @@ Present as indented outline.
 ## Topical Depth Table
 Table: Pillar | Subtopic Count | Supporting Article Count | Total Pages | Depth Rating (Deep/Medium/Shallow)
 
-Primary revenue pillars = Deep. Secondary = Medium. Peripheral = Shallow.
-
-## Content Pruning Log
-Apply pruning rules. Log every pruned topic:
-Table: Topic | Pruned Reason | Alternative Treatment
-
-Prune if: outside topical boundary, zero search demand for this niche/geo, would dilute topical focus, no differentiation angle vs. existing top-ranked content.
-
-## Internal Link Architecture
-Design following strict rules:
-- Pillar pages link DOWN to subtopics
-- Subtopic pages link UP to pillar + LATERALLY to sibling subtopics only
-- Supporting articles link UP to subtopic only
-- Homepage links to all pillars
-- Service pages = Tier 1 (pillar)
-
-Produce text-based hierarchy diagram + link matrix table:
-Source Page | Target Page | Anchor Text Suggestion | Link Type (nav/inline/footer)
-
-Confirm `03-topical-map.md` was saved.
-
-
----
-
-## Integration: seo-cluster (execute the cluster plan)
-
-If `cluster-plan.json` was produced in Phase 2, import it now to anchor the topical map architecture:
-
-```
-/seo cluster plan --from strategy
-```
-
-This reads the Phase 2 cluster output and enriches it with full SERP overlap analysis. The resulting hub-and-spoke structure becomes the skeleton of `03-topical-map.md`.
-
-**Important:** seo-cluster uses SERP overlap (shared Google top-10 results) to group content — this is objective data, not editorial guesswork. Where the cluster plan and your Koray topical judgment diverge, trust the SERP data for page boundaries and trust the Koray framework for attribute depth within each page.
-
-After Phase 3 is finalized, run:
-```
-/seo cluster map
-```
-This generates `cluster-map.html` — an interactive visualization of the full topical architecture. Share it with the client for alignment before content production begins.
-
----
-
-## Integration: seo-sxo (intent validation)
-
-Before finalizing the topical map, validate the top 3 pillar pages using the Search Experience Optimization skill:
-
-```
-/seo sxo [pillar keyword]
-```
-
-`seo-sxo` reads the Google SERP backwards — it analyzes what page types, content formats, and user intents Google is actually rewarding for each pillar keyword. If Google rewards a "best-of" list but you planned a service page, the service page won't rank regardless of entity coverage depth.
-
-**Use the sxo output to:**
-- Confirm or adjust the content format (guide vs. list vs. comparison vs. service page)
-- Validate the intended word count against what's ranking
-- Identify any SERP feature opportunities (featured snippets, PAA, local pack) that should influence page structure
-
-Add the sxo findings to `03-topical-map.md` under each pillar's entry as "SERP intent signal."
+Primary revenue pillars = Deep. Secondary = Medium. P

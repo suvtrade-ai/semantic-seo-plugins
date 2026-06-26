@@ -4,6 +4,7 @@ description: Runs Phase 2 of the Semantic SEO framework — Semantic Research us
 tools:
   - Write
   - WebSearch
+  - Bash
 ---
 
 # Semantic Research (Phase 2)
@@ -59,16 +60,82 @@ Only Validated and Partially Validated entities advance to the Attribute Matrix.
 
 ## Attribute Matrix
 
-### Step 1: Data collection
+### Step 1: Data collection — automated via Apify + SerpAPI
 
-Search the primary query for each core entity (e.g. "custom tailor Bangkok"). Open the **top 20 ranking pages**. For each page, record every distinct attribute mentioned — these are factual properties of the entity: turnaround time, price range, fabric types, process steps, location details, certifications, languages spoken, and so on.
+**Do not manually open 20 pages.** Use Apify to scrape all top-20 results in one run, and SerpAPI to pull PAA questions per entity. This produces a structured dataset in ~60 seconds.
 
-Create a raw count table before scoring:
+#### 1a. Apify — scrape top 20 organic results per core entity
+
+```python
+from apify_client import ApifyClient
+import os, json
+
+apify = ApifyClient(os.environ.get("APIFY_API_TOKEN"))
+
+# Run once per core entity query (e.g. "bespoke tailor Bangkok", "shirt tailoring Bangkok")
+entity_queries = [
+    f"{entity} {city}" for entity in core_entities  # from entity identification above
+]
+
+scraped_pages = {}
+for query in entity_queries:
+    run = apify.actor("apify/google-search-scraper").call(run_input={
+        "queries": query,
+        "resultsPerPage": 20,
+        "maxPagesPerQuery": 1,
+        "countryCode": "TH",       # set to business country
+        "languageCode": "en",
+    })
+    items = list(apify.dataset(run["defaultDatasetId"]).iterate_items())
+    scraped_pages[query] = items[0].get("organicResults", []) if items else []
+    print(f"Scraped {len(scraped_pages[query])} results for: {query}")
+
+# Save raw data
+with open("attribute-raw.json", "w") as f:
+    json.dump(scraped_pages, f, indent=2)
+print("Saved attribute-raw.json")
+```
+
+For each scraped page, extract the **title**, **meta description**, and **snippet** — these are sufficient for attribute frequency counting at scale. If you need full body text for a specific competitor, use `WebFetch` on that URL individually.
+
+#### 1b. SerpAPI — PAA questions per entity
+
+```python
+import os, requests
+
+SERPAPI_KEY = os.environ.get("SERPAPI_API_KEY")
+
+paa_data = {}
+for query in entity_queries:
+    params = {
+        "engine": "google",
+        "q": query,
+        "api_key": SERPAPI_KEY,
+        "num": 10,
+        "gl": "th",
+        "hl": "en"
+    }
+    resp = requests.get("https://serpapi.com/search", params=params).json()
+    paa_data[query] = [q["question"] for q in resp.get("related_questions", [])]
+    print(f"PAA for '{query}': {paa_data[query]}")
+
+with open("paa-data.json", "w") as f:
+    json.dump(paa_data, f, indent=2)
+print("Saved paa-data.json")
+```
+
+**PAA questions are the most reliable signal for "Relevant" attributes** — they represent real user intent gaps that competitors haven't fully answered.
+
+#### 1c. Build the raw count table from scraped data
+
+Read `attribute-raw.json`. For each attribute you identify across the 20 scraped snippets, count how many pages mention it. Then cross-reference `paa-data.json` to mark PAA presence.
+
+Create the raw count table:
 
 ```
 | Attribute              | Pages mentioning it (out of 20) | Appears in H1/first paragraph of top 3? | Appears in PAA questions? |
 |------------------------|--------------------------------|------------------------------------------|---------------------------|
-| [attribute name]       | [count]                        | Yes / No                                 | Yes / No                  |
+| [attribute name]       | [count from scraped data]      | Yes / No                                 | Yes / No (from paa-data)  |
 ```
 
 ### Step 2: Scoring rules — apply these exact thresholds
@@ -164,45 +231,4 @@ If DataForSEO is connected, use it during entity validation to pull real keyword
 /seo dataforseo keywords [entity name] [city]
 ```
 
-This replaces the manual SERP volume estimation step with real data. Use the returned CPC and competition scores to prioritize which entity attributes to cover first (highest volume, lowest competition = fastest wins).
-
-**If DataForSEO is NOT connected:** proceed with WebSearch-based SERP estimation. Flag this in `02-semantic-research.md` as "estimated volumes — upgrade with DataForSEO when available."
-
----
-
-## CoR Step — EAV Triple Validation + Knowledge-Based Trust
-
-After completing the Attribute Matrix, run an EAV validation pass on all discovered entities. Reference `cor/frameworks/eav-architecture.md` and `cor/audits/knowledge-graph-validation.md`.
-
-### EAV Triple Validation Checklist
-
-For every key fact in `02-semantic-research.md`, verify:
-
-```
-[ ] Explicit naming — entity is named directly, no ambiguous pronouns
-[ ] Specific values — numbers and measurements, not "many" or "some"
-[ ] Definitive modality — "is" for facts, "can" for possibilities, "should" for advice
-[ ] Consistent units — same measurement system throughout
-[ ] Source-backed — fact can be verified from Wikipedia, schema.org, or authoritative source
-```
-
-### Knowledge-Based Trust (KBT) Consistency Check
-
-All EAV triples extracted here become the **locked source of truth** for the entire site. Add a KBT table to `02-semantic-research.md`:
-
-```
-| Entity | Attribute | Locked Value | Source |
-|--------|-----------|-------------|--------|
-| [CE]   | Price range | [exact range] | [source] |
-| [CE]   | Location | [exact address] | NAP |
-| [CE]   | Turnaround time | [X days] | owner confirmed |
-```
-
-**KBT killers to flag and reject:**
-- Vague values: "affordable", "quick", "high quality" → replace with specific numbers
-- Contradictory values: if Page A says "2–3 days" and Page B says "3–5 days" → standardize now
-- Missing citations: claims without a verifiable source → add source or remove
-
-**Why this step matters:** Google's Knowledge-Based Trust patent scores sites on consistency of facts across pages. Contradictions increase Cost of Retrieval and reduce trust scores. See `cor/concepts/cost-of-retrieval.md` for the full breakdown.
-
-Append the KBT table to `02-semantic-research.md` before Phase 3.
+This repl
